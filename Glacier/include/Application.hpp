@@ -2,6 +2,7 @@
 
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
+#include <optional>
 
 #include "Window.hpp"
 
@@ -32,5 +33,10 @@ namespace glacier
 
 		void* m_VulkanInstance;
 		void* m_DebugMessenger;
+		void* m_Device;
+		void* m_Surface;
+
+		void* m_GraphicsQueue;
+		void* m_PresentationQueue;
 	};
 }

@@ -2,11 +2,38 @@
 
 #include <vector>
 #include <iostream>
+#include <set>
 
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
 std::shared_ptr<spdlog::logger> glacier::Application::s_Logger = spdlog::stdout_color_mt("console");
+
+struct QueueFamilyIndices
+{
+	std::optional<unsigned int> graphicsFamily;
+	std::optional<unsigned int> presentationFamily;
+
+	bool isComplete()
+	{
+		if (graphicsFamily.has_value() && presentationFamily.has_value())
+			return true;
+
+		return false;
+	}
+};
+
+struct SwapChainSupportDetails
+{
+	VkSurfaceCapabilitiesKHR capabilities;
+	std::vector<VkSurfaceFormatKHR> formats;
+	std::vector<VkPresentModeKHR> presentModes;
+
+	bool isAdequate()
+	{
+		return (formats.empty() || presentModes.empty()) == false;
+	}
+};
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT severity, VkDebugUtilsMessageTypeFlagsEXT type, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData)
 {
@@ -53,6 +80,87 @@ void vkDestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerE
 		return function(instance, debugMessenger, pAllocator);
 }
 
+QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device, VkSurfaceKHR surface)
+{
+	QueueFamilyIndices queueFamilyIndices;
+
+	unsigned int queueFamilyCount;
+	vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
+
+	std::vector<VkQueueFamilyProperties> queueFamilyProperties(queueFamilyCount);
+	vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilyProperties.data());
+
+	unsigned int i = 0;
+	for (const VkQueueFamilyProperties& properties : queueFamilyProperties)
+	{
+		if (properties.queueFlags & VK_QUEUE_GRAPHICS_BIT)
+		{
+			queueFamilyIndices.graphicsFamily = i;
+		}
+
+		VkBool32 presentSupport = VK_FALSE;
+		vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &presentSupport);
+
+		if (presentSupport)
+		{
+			queueFamilyIndices.presentationFamily = i;
+		}
+
+		// If all the queue families are found, break the loop
+		if (queueFamilyIndices.isComplete())
+			break;
+
+		i++;
+	}
+
+	return queueFamilyIndices;
+}
+
+SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device, VkSurfaceKHR surface)
+{
+	SwapChainSupportDetails details;
+
+	unsigned int formatCount;
+	vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, nullptr);
+
+	if (formatCount > 0)
+	{
+		details.formats.resize(formatCount);
+		vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, details.formats.data());
+	}
+
+	unsigned int presentModeCount;
+	vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, nullptr);
+
+	if (presentModeCount > 0)
+	{
+		details.presentModes.resize(presentModeCount);
+		vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, details.presentModes.data());
+	}
+
+	return details;
+}
+
+bool isDeviceSuitable(VkPhysicalDevice device, VkSurfaceKHR surface)
+{
+	VkPhysicalDeviceProperties deviceProperties;
+	vkGetPhysicalDeviceProperties(device, &deviceProperties);
+
+	VkPhysicalDeviceFeatures deviceFeatures;
+	vkGetPhysicalDeviceFeatures(device, &deviceFeatures);
+
+	QueueFamilyIndices queueFamilyIndices = findQueueFamilies(device, surface);
+
+	if (!queueFamilyIndices.isComplete())
+		return false;
+
+	SwapChainSupportDetails details = querySwapChainSupport(device, surface);
+	if (!details.isAdequate())
+		return false;
+
+	return true;
+}
+
 glacier::Application::Application(const ApplicationInfo& info)
 {
 	m_Window = new glacier::Window(info.windowInfo);
@@ -95,11 +203,6 @@ glacier::Application::Application(const ApplicationInfo& info)
 	instanceCreateInfo.enabledLayerCount = 0;
 #endif
 
-	if (vkCreateInstance(&instanceCreateInfo, nullptr, reinterpret_cast<VkInstance*>(&m_VulkanInstance)) != VK_SUCCESS)
-	{
-		throw std::runtime_error("Failed to create Vulkan instance");
-	}
-
 #ifndef NDEBUG
 	VkDebugUtilsMessengerCreateInfoEXT debugMessengerCreateInfo = {};
 	debugMessengerCreateInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
@@ -107,18 +210,114 @@ glacier::Application::Application(const ApplicationInfo& info)
 	debugMessengerCreateInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
 	debugMessengerCreateInfo.pfnUserCallback = debugCallback;
 
-	// instanceCreateInfo.pNext = &debugMessengerCreateInfo;
+	instanceCreateInfo.pNext = &debugMessengerCreateInfo;
+#endif
 
+	if (vkCreateInstance(&instanceCreateInfo, nullptr, reinterpret_cast<VkInstance*>(&m_VulkanInstance)) != VK_SUCCESS)
+	{
+		throw std::runtime_error("Failed to create Vulkan instance");
+	}
+
+#ifndef NDEBUG
 	if (vkCreateDebugUtilsMessengerEXT(static_cast<VkInstance>(m_VulkanInstance), &debugMessengerCreateInfo, nullptr, reinterpret_cast<VkDebugUtilsMessengerEXT*>(&m_DebugMessenger)) != VK_SUCCESS)
 	{
 		throw std::runtime_error("Failed to create Vulkan debug messenger");
 	}
 #endif
+
+	/* Create a window surface */
+	if (glfwCreateWindowSurface(static_cast<VkInstance>(m_VulkanInstance), static_cast<GLFWwindow*>(m_Window->m_Window), nullptr, reinterpret_cast<VkSurfaceKHR*>(&m_Surface)) != VK_SUCCESS)
+	{
+		throw std::runtime_error("Failed to create window surface");
+	}
+
+	/* Pick a GPU */
+	unsigned int deviceCount = 0;
+	vkEnumeratePhysicalDevices(static_cast<VkInstance>(m_VulkanInstance), &deviceCount, nullptr);
+
+	std::vector<VkPhysicalDevice> devices(deviceCount);
+	vkEnumeratePhysicalDevices(static_cast<VkInstance>(m_VulkanInstance), &deviceCount, devices.data());
+
+	VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
+
+	for (VkPhysicalDevice device : devices)
+	{
+		if (!isDeviceSuitable(device, static_cast<VkSurfaceKHR>(m_Surface)))
+			continue;
+
+		VkPhysicalDeviceProperties deviceProperties;
+		vkGetPhysicalDeviceProperties(device, &deviceProperties);
+
+		s_Logger->info("Selected GPU: {}", deviceProperties.deviceName);
+		s_Logger->info("Vulkan version: {}.{}.{}", VK_VERSION_MAJOR(deviceProperties.apiVersion), VK_VERSION_MINOR(deviceProperties.apiVersion), VK_VERSION_PATCH(deviceProperties.apiVersion));
+
+		physicalDevice = device;
+		break;
+	}
+
+	if (physicalDevice == VK_NULL_HANDLE)
+	{
+		throw std::runtime_error("Failed to find a suitable GPU");
+	}
+
+	/* Create a logical device */
+	QueueFamilyIndices queueFamilyIndices = findQueueFamilies(physicalDevice, static_cast<VkSurfaceKHR>(m_Surface));
+
+	std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
+
+	std::set<unsigned int> uniqueQueueFamilies = { queueFamilyIndices.graphicsFamily.value(), queueFamilyIndices.presentationFamily.value() };
+
+	for (unsigned int queueFamilyIndex : uniqueQueueFamilies)
+	{
+		VkDeviceQueueCreateInfo queueCreateInfo = {};
+		queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+		queueCreateInfo.queueFamilyIndex = queueFamilyIndex;
+		queueCreateInfo.queueCount = 1;
+
+		float priority = 1.0f;
+		queueCreateInfo.pQueuePriorities = &priority;
+
+		queueCreateInfos.push_back(queueCreateInfo);
+	}
+
+	VkPhysicalDeviceFeatures deviceFeatures = {};
+
+	VkDeviceCreateInfo deviceCreateInfo = {};
+	deviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+	deviceCreateInfo.pQueueCreateInfos = queueCreateInfos.data();
+	deviceCreateInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());
+	deviceCreateInfo.pEnabledFeatures = &deviceFeatures;
+
+#ifndef NDEBUG
+	deviceCreateInfo.ppEnabledLayerNames = layers.data();
+	deviceCreateInfo.enabledLayerCount = static_cast<uint32_t>(layers.size());
+#else
+	deviceCreateInfo.enabledLayerCount = 0;
+#endif
+
+	std::vector<const char*> deviceExtensions;
+	deviceExtensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+
+	deviceCreateInfo.ppEnabledExtensionNames = deviceExtensions.data();
+	deviceCreateInfo.enabledExtensionCount = static_cast<uint32_t>(deviceExtensions.size());
+
+	if (vkCreateDevice(physicalDevice, &deviceCreateInfo, nullptr, reinterpret_cast<VkDevice*>(&m_Device)) != VK_SUCCESS)
+	{
+		throw std::runtime_error("Failed to create logical device");
+	}
+
+	/* Get device queues */
+	vkGetDeviceQueue(static_cast<VkDevice>(m_Device), queueFamilyIndices.graphicsFamily.value(), 0, reinterpret_cast<VkQueue*>(&m_GraphicsQueue));
+	vkGetDeviceQueue(static_cast<VkDevice>(m_Device), queueFamilyIndices.presentationFamily.value(), 0, reinterpret_cast<VkQueue*>(&m_PresentationQueue));
+
+	// https://vulkan-tutorial.com/en/Drawing_a_triangle/Presentation/Swap_chain
 }
 
 glacier::Application::~Application()
 {
-	//vkDestroyDebugUtilsMessengerEXT(static_cast<VkInstance>(m_VulkanInstance), static_cast<VkDebugUtilsMessengerEXT>(m_DebugMessenger), nullptr);
+	vkDestroyDevice(static_cast<VkDevice>(m_Device), nullptr);
+	vkDestroySurfaceKHR(static_cast<VkInstance>(m_VulkanInstance), static_cast<VkSurfaceKHR>(m_Surface), nullptr);
+	vkDestroyDebugUtilsMessengerEXT(static_cast<VkInstance>(m_VulkanInstance), static_cast<VkDebugUtilsMessengerEXT>(m_DebugMessenger), nullptr);
 	vkDestroyInstance(static_cast<VkInstance>(m_VulkanInstance), nullptr);
 
 	delete m_Window;

@@ -12,7 +12,6 @@ namespace glacier
 		unsigned int width;
 		unsigned int height;
 		bool resizable;
-		bool vsync;
 	};
 
 	class Window
@@ -21,6 +20,7 @@ namespace glacier
 		GLACIER_API Window(const WindowInfo& info);
 		GLACIER_API ~Window();
 
+		// Delete copy operators
 		Window(const Window&) = delete;
 		Window& operator=(const Window&) = delete;
 

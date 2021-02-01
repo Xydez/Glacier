@@ -16,6 +16,8 @@ namespace glacier
 		unsigned int minor;
 		unsigned int patch;
 
+		bool vsync;
+
 		WindowInfo windowInfo;
 	};
 
@@ -35,6 +37,7 @@ namespace glacier
 		void* m_DebugMessenger;
 		void* m_Device;
 		void* m_Surface;
+		void* m_Swapchain;
 
 		void* m_GraphicsQueue;
 		void* m_PresentationQueue;

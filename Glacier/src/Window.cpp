@@ -11,7 +11,7 @@ glacier::Window::Window(const WindowInfo& info)
 		throw std::runtime_error("GLFW failed to initialize");
 
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-	glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+	glfwWindowHint(GLFW_RESIZABLE, info.resizable ? GLFW_TRUE : GLFW_FALSE);
 
 	m_Window = glfwCreateWindow(info.width, info.height, info.title, nullptr, nullptr);
 	if (m_Window == nullptr)

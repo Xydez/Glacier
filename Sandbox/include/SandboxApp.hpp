@@ -9,9 +9,8 @@ glacier::ApplicationInfo generateApplicationInfo()
 	windowInfo.width = 800;
 	windowInfo.height = 600;
 	windowInfo.resizable = true;
-	windowInfo.vsync = true;
 
-	glacier::ApplicationInfo info = { "SandboxApp", 0, 1, 0, windowInfo };
+	glacier::ApplicationInfo info = { "SandboxApp", 0, 1, 0, true, windowInfo };
 
 	return info;
 }

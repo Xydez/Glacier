@@ -7,7 +7,14 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
-std::shared_ptr<spdlog::logger> glacier::Application::s_Logger = spdlog::stdout_color_mt("console");
+std::shared_ptr<spdlog::logger> createLogger(const char* name)
+{
+	std::shared_ptr<spdlog::logger> logger = spdlog::stdout_color_mt(name);
+	logger->set_level(spdlog::level::debug);
+	return logger;
+}
+
+std::shared_ptr<spdlog::logger> glacier::Application::s_Logger = createLogger("console");
 
 struct QueueFamilyIndices
 {
@@ -120,6 +127,8 @@ SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device, VkSurface
 {
 	SwapChainSupportDetails details;
 
+	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &(details.capabilities));
+
 	unsigned int formatCount;
 	vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, nullptr);
 
@@ -139,6 +148,55 @@ SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device, VkSurface
 	}
 
 	return details;
+}
+
+VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& formats)
+{
+	for (const VkSurfaceFormatKHR& surfaceFormat : formats)
+	{
+		if (surfaceFormat.format == VK_FORMAT_B8G8R8A8_SRGB && surfaceFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
+		{
+			return surfaceFormat;
+		}
+	}
+
+	return formats[0];
+}
+
+VkPresentModeKHR choosePresentMode(const std::vector<VkPresentModeKHR>& modes, bool vsync)
+{
+	for (const VkPresentModeKHR& mode : modes)
+	{
+		// If vsync is disabled, prefer immediate.
+		if (vsync == false && mode == VK_PRESENT_MODE_IMMEDIATE_KHR)
+			return mode;
+
+		// If vsync is enabled, prefer triple buffering over double buffering.
+		if (vsync == true && mode == VK_PRESENT_MODE_MAILBOX_KHR)
+			return mode;
+	}
+
+	// If the preferred modes aren't available, default to double buffering.
+	return VK_PRESENT_MODE_FIFO_KHR;
+}
+
+VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities, GLFWwindow* windowHandle)
+{
+	if (capabilities.currentExtent.width != UINT32_MAX)
+	{
+		// If screen coordinates match pixels, return the current extent in screen coordinates.
+		return capabilities.currentExtent;
+	}
+	else
+	{
+		// If screen coordinates don't match pixels, get the current extent in pixels from GLFW
+		int width, height;
+		glfwGetFramebufferSize(windowHandle, &width, &height);
+
+		VkExtent2D actualExtent = { static_cast<uint32_t>(width), static_cast<uint32_t>(height) };
+
+		return actualExtent;
+	}
 }
 
 bool isDeviceSuitable(VkPhysicalDevice device, VkSurfaceKHR surface)
@@ -163,9 +221,14 @@ bool isDeviceSuitable(VkPhysicalDevice device, VkSurfaceKHR surface)
 
 glacier::Application::Application(const ApplicationInfo& info)
 {
+	s_Logger->info("Initializing application...");
+
+	s_Logger->debug("Creating window...");
 	m_Window = new glacier::Window(info.windowInfo);
 
 	/* Create Vulkan instance */
+	s_Logger->debug("Creating Vulkan instance");
+
 	VkApplicationInfo applicationInfo = {};
 	applicationInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
 	applicationInfo.pApplicationName = info.name;
@@ -226,12 +289,14 @@ glacier::Application::Application(const ApplicationInfo& info)
 #endif
 
 	/* Create a window surface */
+	s_Logger->debug("Creating window surface...");
 	if (glfwCreateWindowSurface(static_cast<VkInstance>(m_VulkanInstance), static_cast<GLFWwindow*>(m_Window->m_Window), nullptr, reinterpret_cast<VkSurfaceKHR*>(&m_Surface)) != VK_SUCCESS)
 	{
 		throw std::runtime_error("Failed to create window surface");
 	}
 
 	/* Pick a GPU */
+	s_Logger->debug("Picking GPU...");
 	unsigned int deviceCount = 0;
 	vkEnumeratePhysicalDevices(static_cast<VkInstance>(m_VulkanInstance), &deviceCount, nullptr);
 
@@ -261,6 +326,8 @@ glacier::Application::Application(const ApplicationInfo& info)
 	}
 
 	/* Create a logical device */
+	s_Logger->debug("Creating logical device...");
+
 	QueueFamilyIndices queueFamilyIndices = findQueueFamilies(physicalDevice, static_cast<VkSurfaceKHR>(m_Surface));
 
 	std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
@@ -306,6 +373,76 @@ glacier::Application::Application(const ApplicationInfo& info)
 		throw std::runtime_error("Failed to create logical device");
 	}
 
+	/* Create a swap chain */
+	s_Logger->debug("Creating swap chain");
+
+	SwapChainSupportDetails details = querySwapChainSupport(physicalDevice, static_cast<VkSurfaceKHR>(m_Surface));
+	
+	VkSurfaceFormatKHR surfaceFormat = chooseSwapSurfaceFormat(details.formats);
+	VkPresentModeKHR presentMode = choosePresentMode(details.presentModes, info.vsync);
+	VkExtent2D extent = chooseSwapExtent(details.capabilities, static_cast<GLFWwindow*>(m_Window->m_Window));
+
+	unsigned int imageCount = details.capabilities.minImageCount + 1;
+	if (details.capabilities.minImageCount > 0 && imageCount > details.capabilities.maxImageCount)
+	{
+		imageCount = details.capabilities.maxImageCount;
+	}
+
+	VkSwapchainCreateInfoKHR swapchainCreateInfo = {};
+	swapchainCreateInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+	swapchainCreateInfo.surface = static_cast<VkSurfaceKHR>(m_Surface);
+	swapchainCreateInfo.minImageCount = imageCount;
+	swapchainCreateInfo.imageFormat = surfaceFormat.format;
+	swapchainCreateInfo.imageColorSpace = surfaceFormat.colorSpace;
+	swapchainCreateInfo.imageExtent = extent;
+	swapchainCreateInfo.imageArrayLayers = 1;
+
+	// Images will be written to directly
+	swapchainCreateInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+
+	uint32_t indices[] = { queueFamilyIndices.graphicsFamily.value(), queueFamilyIndices.presentationFamily.value() };
+
+	if (queueFamilyIndices.graphicsFamily != queueFamilyIndices.presentationFamily)
+	{
+		// If the graphics and presentation families are different, we need to specify that both share ownership of the image.
+
+		swapchainCreateInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
+		swapchainCreateInfo.queueFamilyIndexCount = 2;
+		swapchainCreateInfo.pQueueFamilyIndices = indices;
+	}
+	else
+	{
+		// If the graphcis and presentation families are the same, we can safely specify that they exclusively own the image.
+		swapchainCreateInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+		swapchainCreateInfo.queueFamilyIndexCount = 0;
+		swapchainCreateInfo.pQueueFamilyIndices = nullptr;
+	}
+
+	// Don't transform the image
+	swapchainCreateInfo.preTransform = details.capabilities.currentTransform;
+
+	// Ignore the alpha channel
+	swapchainCreateInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+
+	swapchainCreateInfo.presentMode = presentMode;
+
+	// Enable clipping of unused pixels for better performance
+	swapchainCreateInfo.clipped = VK_TRUE;
+
+	// TODO: If the window is resized, we need to create an entirely new swapchain
+	swapchainCreateInfo.oldSwapchain = VK_NULL_HANDLE;
+
+	if (vkCreateSwapchainKHR(static_cast<VkDevice>(m_Device), &swapchainCreateInfo, nullptr, reinterpret_cast<VkSwapchainKHR*>(&m_Swapchain)) != VK_SUCCESS)
+	{
+		throw std::runtime_error("Failed to create swapchain");
+	}
+
+	// Get the swapchain images
+	vkGetSwapchainImagesKHR(static_cast<VkDevice>(m_Device), static_cast<VkSwapchainKHR>(m_Swapchain), &imageCount, nullptr);
+	
+	std::vector<VkImage> swapchainImages(imageCount);
+	vkGetSwapchainImagesKHR(static_cast<VkDevice>(m_Device), static_cast<VkSwapchainKHR>(m_Swapchain), &imageCount, swapchainImages.data());
+
 	/* Get device queues */
 	vkGetDeviceQueue(static_cast<VkDevice>(m_Device), queueFamilyIndices.graphicsFamily.value(), 0, reinterpret_cast<VkQueue*>(&m_GraphicsQueue));
 	vkGetDeviceQueue(static_cast<VkDevice>(m_Device), queueFamilyIndices.presentationFamily.value(), 0, reinterpret_cast<VkQueue*>(&m_PresentationQueue));
@@ -315,11 +452,17 @@ glacier::Application::Application(const ApplicationInfo& info)
 
 glacier::Application::~Application()
 {
+	s_Logger->info("Terminating application...");
+
+	s_Logger->debug("Destroying Vulkan instance...");
+
+	vkDestroySwapchainKHR(static_cast<VkDevice>(m_Device), static_cast<VkSwapchainKHR>(m_Swapchain), nullptr);
 	vkDestroyDevice(static_cast<VkDevice>(m_Device), nullptr);
 	vkDestroySurfaceKHR(static_cast<VkInstance>(m_VulkanInstance), static_cast<VkSurfaceKHR>(m_Surface), nullptr);
 	vkDestroyDebugUtilsMessengerEXT(static_cast<VkInstance>(m_VulkanInstance), static_cast<VkDebugUtilsMessengerEXT>(m_DebugMessenger), nullptr);
 	vkDestroyInstance(static_cast<VkInstance>(m_VulkanInstance), nullptr);
 
+	s_Logger->debug("Destroying window...");
 	delete m_Window;
 }
 

@@ -41,5 +41,7 @@ namespace glacier
 
 		void* m_GraphicsQueue;
 		void* m_PresentationQueue;
+
+		std::vector<void*> m_ImageViews;
 	};
 }

@@ -11,6 +11,7 @@ std::shared_ptr<spdlog::logger> createLogger(const char* name)
 {
 	std::shared_ptr<spdlog::logger> logger = spdlog::stdout_color_mt(name);
 	logger->set_level(spdlog::level::debug);
+
 	return logger;
 }
 
@@ -59,6 +60,8 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityF
 	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT:
 		level = spdlog::level::err;
 		break;
+	default:
+		return VK_FALSE;
 	}
 
 	if (level == spdlog::level::info)
@@ -180,7 +183,7 @@ VkPresentModeKHR choosePresentMode(const std::vector<VkPresentModeKHR>& modes, b
 	return VK_PRESENT_MODE_FIFO_KHR;
 }
 
-VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities, GLFWwindow* windowHandle)
+VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities, glacier::Window* window)
 {
 	if (capabilities.currentExtent.width != UINT32_MAX)
 	{
@@ -190,10 +193,9 @@ VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities, GLFWwi
 	else
 	{
 		// If screen coordinates don't match pixels, get the current extent in pixels from GLFW
-		int width, height;
-		glfwGetFramebufferSize(windowHandle, &width, &height);
+		glm::uvec2 size = window->getFramebufferSize();
 
-		VkExtent2D actualExtent = { static_cast<uint32_t>(width), static_cast<uint32_t>(height) };
+		VkExtent2D actualExtent = { static_cast<uint32_t>(size.x), static_cast<uint32_t>(size.y) };
 
 		return actualExtent;
 	}
@@ -380,7 +382,7 @@ glacier::Application::Application(const ApplicationInfo& info)
 	
 	VkSurfaceFormatKHR surfaceFormat = chooseSwapSurfaceFormat(details.formats);
 	VkPresentModeKHR presentMode = choosePresentMode(details.presentModes, info.vsync);
-	VkExtent2D extent = chooseSwapExtent(details.capabilities, static_cast<GLFWwindow*>(m_Window->m_Window));
+	VkExtent2D extent = chooseSwapExtent(details.capabilities, m_Window);
 
 	unsigned int imageCount = details.capabilities.minImageCount + 1;
 	if (details.capabilities.minImageCount > 0 && imageCount > details.capabilities.maxImageCount)
@@ -498,13 +500,148 @@ glacier::Application::~Application()
 	vkDestroyInstance(static_cast<VkInstance>(m_VulkanInstance), nullptr);
 
 	s_Logger->debug("Destroying window...");
+
 	delete m_Window;
 }
 
 void glacier::Application::run()
 {
+	/* Create pipeline */
+	Pipeline pipeline = {};
+	initialize(pipeline);
+	
+	for (Shader* shader : pipeline.shaders)
+	{
+		VkPipelineShaderStageCreateInfo shaderCreateInfo = {};
+		shaderCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+		
+		switch (shader->m_Type)
+		{
+		case ShaderType::Vertex:
+			shaderCreateInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
+			break;
+		case ShaderType::Fragment:
+			shaderCreateInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+			break;
+		}
+
+		shaderCreateInfo.module = static_cast<VkShaderModule>(shader->m_ShaderModule);
+		shaderCreateInfo.pName = "main";
+	}
+
+	VkPipelineInputAssemblyStateCreateInfo inputAssemblyCreateInfo = {};
+	inputAssemblyCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+	inputAssemblyCreateInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+	inputAssemblyCreateInfo.primitiveRestartEnable = VK_FALSE;
+
+	VkPipelineVertexInputStateCreateInfo vertexInputCreateInfo = {};
+	vertexInputCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+	vertexInputCreateInfo.vertexBindingDescriptionCount = 0;
+	vertexInputCreateInfo.pVertexBindingDescriptions = nullptr;
+	vertexInputCreateInfo.vertexAttributeDescriptionCount = 0;
+	vertexInputCreateInfo.pVertexAttributeDescriptions = nullptr;
+
+	VkViewport viewport = {};
+	viewport.x = 0.0f;
+	viewport.y = 0.0f;
+
+	glm::uvec2 size = m_Window->getFramebufferSize();
+	viewport.width = static_cast<float>(size.x);
+	viewport.height = static_cast<float>(size.y);
+	viewport.minDepth = 0.0f;
+	viewport.maxDepth = 1.0f;
+
+	VkRect2D scissor = {};
+	scissor.offset = { 0, 0 };
+	scissor.extent = { size.x, size.y };
+
+	VkPipelineViewportStateCreateInfo viewportCreateInfo = {};
+	viewportCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+	viewportCreateInfo.viewportCount = 1;
+	viewportCreateInfo.pViewports = &viewport;
+	viewportCreateInfo.scissorCount = 1;
+	viewportCreateInfo.pScissors = &scissor;
+
+	VkPipelineRasterizationStateCreateInfo rasterizerCreateInfo = {};
+	rasterizerCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+	rasterizerCreateInfo.depthClampEnable = VK_FALSE;
+	rasterizerCreateInfo.rasterizerDiscardEnable = VK_FALSE;
+	rasterizerCreateInfo.polygonMode = VK_POLYGON_MODE_FILL;
+	rasterizerCreateInfo.lineWidth = 1.0f;
+
+	// Disable face culling
+	rasterizerCreateInfo.cullMode = VK_CULL_MODE_NONE; // VK_CULL_MODE_BACK_BIT
+
+	rasterizerCreateInfo.frontFace = VK_FRONT_FACE_CLOCKWISE;
+	rasterizerCreateInfo.depthBiasEnable = VK_FALSE;
+	rasterizerCreateInfo.depthBiasConstantFactor = 0.0f;
+	rasterizerCreateInfo.depthBiasClamp = 0.0f;
+	rasterizerCreateInfo.depthBiasSlopeFactor = 0.0f;
+
+	VkPipelineMultisampleStateCreateInfo multisampleCreateInfo = {};
+	multisampleCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+	multisampleCreateInfo.sampleShadingEnable = VK_FALSE;
+	multisampleCreateInfo.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+	multisampleCreateInfo.minSampleShading = 1.0f;
+	multisampleCreateInfo.pSampleMask = nullptr;
+	multisampleCreateInfo.alphaToCoverageEnable = VK_FALSE;
+	multisampleCreateInfo.alphaToOneEnable = VK_FALSE;
+
+	VkPipelineColorBlendAttachmentState colorBlendAttachment = {};
+	colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+	colorBlendAttachment.blendEnable = VK_FALSE;
+	colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
+	colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;
+	colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
+	colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+	colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+
+	VkPipelineColorBlendStateCreateInfo colorBlendCreateInfo = {};
+	colorBlendCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+	colorBlendCreateInfo.logicOpEnable = VK_FALSE;
+	colorBlendCreateInfo.logicOp = VK_LOGIC_OP_COPY;
+	colorBlendCreateInfo.attachmentCount = 1;
+	colorBlendCreateInfo.pAttachments = &colorBlendAttachment;
+	colorBlendCreateInfo.blendConstants[0] = 0.0f;
+	colorBlendCreateInfo.blendConstants[1] = 0.0f;
+	colorBlendCreateInfo.blendConstants[2] = 0.0f;
+	colorBlendCreateInfo.blendConstants[3] = 0.0f;
+
+	VkDynamicState dynamicStates[] = {
+		VK_DYNAMIC_STATE_VIEWPORT
+	};
+
+	VkPipelineDynamicStateCreateInfo dynamicStateCreateInfo = {};
+	dynamicStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+	dynamicStateCreateInfo.dynamicStateCount = 1;
+	dynamicStateCreateInfo.pDynamicStates = dynamicStates;
+
+	VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo = {};
+	pipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+	pipelineLayoutCreateInfo.setLayoutCount = 0;
+	pipelineLayoutCreateInfo.pSetLayouts = nullptr;
+	pipelineLayoutCreateInfo.pushConstantRangeCount = 0;
+	pipelineLayoutCreateInfo.pPushConstantRanges = nullptr;
+
+	VkPipelineLayout pipelineLayout;
+
+	if (vkCreatePipelineLayout(static_cast<VkDevice>(m_Device), &pipelineLayoutCreateInfo, nullptr, &pipelineLayout) != VK_SUCCESS)
+	{
+		throw std::runtime_error("Failed to create pipeline layout");
+	}
+
+	/* Start game loop */
+	double lastTime = glfwGetTime();
 	while (m_Window->isOpen())
 	{
+		double deltaTime = glfwGetTime() - lastTime;
+		lastTime = glfwGetTime();
+
+		update(deltaTime);
+		render();
+
 		glfwPollEvents();
 	}
+
+	vkDestroyPipelineLayout(static_cast<VkDevice>(m_Device), pipelineLayout, nullptr);
 }

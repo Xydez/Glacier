@@ -2,6 +2,8 @@
 
 #include <string>
 
+#include <glm/vec2.hpp>
+
 #include "common.hpp"
 
 namespace glacier
@@ -20,11 +22,18 @@ namespace glacier
 		GLACIER_API Window(const WindowInfo& info);
 		GLACIER_API ~Window();
 
-		// Delete copy operators
+		// Delete copy
 		Window(const Window&) = delete;
 		Window& operator=(const Window&) = delete;
 
-		GLACIER_API bool isOpen();
+		// Delete move
+		Window(Window&&) = delete;
+		Window& operator=(Window&&) = delete;
+
+		GLACIER_API bool isOpen() const;
+
+		glm::uvec2 getSize() const;
+		glm::uvec2 getFramebufferSize() const;
 
 		friend class Application;
 	private:

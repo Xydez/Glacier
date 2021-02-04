@@ -24,4 +24,12 @@ public:
 
 	~SandboxApp()
 	{}
+
+	void initialize(glacier::Pipeline& pipeline)
+	{
+		// Do nothing
+	}
+private:
+	glacier::Shader* m_VertexShader;
+	glacier::Shader* m_FragmentShader;
 };

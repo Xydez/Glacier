@@ -24,7 +24,34 @@ glacier::Window::~Window()
 	glfwTerminate();
 }
 
-bool glacier::Window::isOpen()
+bool glacier::Window::isOpen() const
 {
 	return !glfwWindowShouldClose(static_cast<GLFWwindow*>(m_Window));
+}
+
+glm::uvec2 glacier::Window::getSize() const
+{
+	int width;
+	int height;
+
+	glfwGetWindowSize(static_cast<GLFWwindow*>(m_Window), &width, &height);
+
+	if (width == 0 || height == 0)
+		throw std::runtime_error("GLFW returned an invalid window size");
+
+	return glm::uvec2(static_cast<unsigned int>(width), static_cast<unsigned int>(height));
+}
+
+glm::uvec2 glacier::Window::getFramebufferSize() const
+{
+	int width;
+	int height;
+
+	// Vulkan wants size in pixels, not screen coordinates, therefore we use glfwGetFramebufferSize instead of glfwGetWindowSize
+	glfwGetFramebufferSize(static_cast<GLFWwindow*>(m_Window), &width, &height);
+
+	if (width == 0 || height == 0)
+		throw std::runtime_error("GLFW returned an invalid framebuffer size");
+
+	return glm::uvec2(static_cast<unsigned int>(width), static_cast<unsigned int>(height));
 }

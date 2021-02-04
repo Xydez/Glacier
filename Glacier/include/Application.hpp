@@ -1,10 +1,12 @@
 #pragma once
 
-#include <spdlog/spdlog.h>
-#include <spdlog/sinks/stdout_color_sinks.h>
 #include <optional>
 
+#include <spdlog/spdlog.h>
+#include <spdlog/sinks/stdout_color_sinks.h>
+
 #include "Window.hpp"
+#include "Pipeline.hpp"
 
 namespace glacier
 {
@@ -29,7 +31,14 @@ namespace glacier
 
 		GLACIER_API void run();
 
+		virtual void initialize(Pipeline& pipeline) {};
+
+		virtual void update(double deltaTime) {}
+		virtual void render() {}
+
 		static std::shared_ptr<spdlog::logger> s_Logger;
+
+		friend class Shader;
 	private:
 		Window* m_Window;
 

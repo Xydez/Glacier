@@ -222,19 +222,20 @@ bool isDeviceSuitable(VkPhysicalDevice device, VkSurfaceKHR surface)
 }
 
 glacier::Application::Application(const ApplicationInfo& info)
+	: m_Info(info)
 {
 	s_Logger->info("Initializing application...");
 
 	s_Logger->debug("Creating window...");
-	m_Window = new glacier::Window(info.windowInfo);
+	m_Window = new glacier::Window(m_Info.windowInfo);
 
 	/* Create Vulkan instance */
 	s_Logger->debug("Creating Vulkan instance");
 
 	VkApplicationInfo applicationInfo = {};
 	applicationInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-	applicationInfo.pApplicationName = info.name;
-	applicationInfo.applicationVersion = VK_MAKE_VERSION(info.major, info.minor, info.patch);
+	applicationInfo.pApplicationName = m_Info.name;
+	applicationInfo.applicationVersion = VK_MAKE_VERSION(m_Info.major, m_Info.minor, m_Info.patch);
 	applicationInfo.pEngineName = "Glacier Engine";
 	applicationInfo.engineVersion = VK_MAKE_VERSION(0, 1, 0);
 	applicationInfo.apiVersion = VK_API_VERSION_1_0;
@@ -305,7 +306,7 @@ glacier::Application::Application(const ApplicationInfo& info)
 	std::vector<VkPhysicalDevice> devices(deviceCount);
 	vkEnumeratePhysicalDevices(static_cast<VkInstance>(m_VulkanInstance), &deviceCount, devices.data());
 
-	VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
+	m_PhysicalDevice = VK_NULL_HANDLE;
 
 	for (VkPhysicalDevice device : devices)
 	{
@@ -318,11 +319,11 @@ glacier::Application::Application(const ApplicationInfo& info)
 		s_Logger->info("Selected GPU: {}", deviceProperties.deviceName);
 		s_Logger->info("Vulkan version: {}.{}.{}", VK_VERSION_MAJOR(deviceProperties.apiVersion), VK_VERSION_MINOR(deviceProperties.apiVersion), VK_VERSION_PATCH(deviceProperties.apiVersion));
 
-		physicalDevice = device;
+		m_PhysicalDevice = device;
 		break;
 	}
 
-	if (physicalDevice == VK_NULL_HANDLE)
+	if (m_PhysicalDevice == VK_NULL_HANDLE)
 	{
 		throw std::runtime_error("Failed to find a suitable GPU");
 	}
@@ -330,7 +331,7 @@ glacier::Application::Application(const ApplicationInfo& info)
 	/* Create a logical device */
 	s_Logger->debug("Creating logical device...");
 
-	QueueFamilyIndices queueFamilyIndices = findQueueFamilies(physicalDevice, static_cast<VkSurfaceKHR>(m_Surface));
+	QueueFamilyIndices queueFamilyIndices = findQueueFamilies(static_cast<VkPhysicalDevice>(m_PhysicalDevice), static_cast<VkSurfaceKHR>(m_Surface));
 
 	std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
 
@@ -370,18 +371,19 @@ glacier::Application::Application(const ApplicationInfo& info)
 	deviceCreateInfo.ppEnabledExtensionNames = deviceExtensions.data();
 	deviceCreateInfo.enabledExtensionCount = static_cast<uint32_t>(deviceExtensions.size());
 
-	if (vkCreateDevice(physicalDevice, &deviceCreateInfo, nullptr, reinterpret_cast<VkDevice*>(&m_Device)) != VK_SUCCESS)
+	if (vkCreateDevice(static_cast<VkPhysicalDevice>(m_PhysicalDevice), &deviceCreateInfo, nullptr, reinterpret_cast<VkDevice*>(&m_Device)) != VK_SUCCESS)
 	{
 		throw std::runtime_error("Failed to create logical device");
 	}
 
+	// ---
 	/* Create a swap chain */
 	s_Logger->debug("Creating swap chain");
 
-	SwapChainSupportDetails details = querySwapChainSupport(physicalDevice, static_cast<VkSurfaceKHR>(m_Surface));
-	
+	SwapChainSupportDetails details = querySwapChainSupport(static_cast<VkPhysicalDevice>(m_PhysicalDevice), static_cast<VkSurfaceKHR>(m_Surface));
+
 	VkSurfaceFormatKHR surfaceFormat = chooseSwapSurfaceFormat(details.formats);
-	VkPresentModeKHR presentMode = choosePresentMode(details.presentModes, info.vsync);
+	VkPresentModeKHR presentMode = choosePresentMode(details.presentModes, m_Info.vsync);
 	VkExtent2D extent = chooseSwapExtent(details.capabilities, m_Window);
 
 	unsigned int imageCount = details.capabilities.minImageCount + 1;
@@ -446,7 +448,7 @@ glacier::Application::Application(const ApplicationInfo& info)
 	VkExtent2D swapchainExtent = extent;
 
 	vkGetSwapchainImagesKHR(static_cast<VkDevice>(m_Device), static_cast<VkSwapchainKHR>(m_Swapchain), &imageCount, nullptr);
-	
+
 	std::vector<VkImage> swapchainImages(imageCount);
 	vkGetSwapchainImagesKHR(static_cast<VkDevice>(m_Device), static_cast<VkSwapchainKHR>(m_Swapchain), &imageCount, swapchainImages.data());
 
@@ -479,42 +481,55 @@ glacier::Application::Application(const ApplicationInfo& info)
 	vkGetDeviceQueue(static_cast<VkDevice>(m_Device), queueFamilyIndices.graphicsFamily.value(), 0, reinterpret_cast<VkQueue*>(&m_GraphicsQueue));
 	vkGetDeviceQueue(static_cast<VkDevice>(m_Device), queueFamilyIndices.presentationFamily.value(), 0, reinterpret_cast<VkQueue*>(&m_PresentationQueue));
 
-	// https://vulkan-tutorial.com/en/Drawing_a_triangle/Presentation/Swap_chain
-}
+	/* Create render pass */
 
-glacier::Application::~Application()
-{
-	s_Logger->info("Terminating application...");
+	// Create color attachment (To clear the screen)
+	VkAttachmentDescription colorAttachment = {};
+	colorAttachment.format = swapchainImageFormat;
+	colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+	colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 
-	s_Logger->debug("Destroying Vulkan instance...");
+	// We won't do anything with the stencil buffer, so we ignore these
+	colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 
-	for (void* imageView : m_ImageViews)
+	colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+	// Create attachment reference
+	VkAttachmentReference colorAttachmentReference = {};
+	colorAttachmentReference.attachment = 0;
+	colorAttachmentReference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+	// Create subpass
+	VkSubpassDescription subpassDescription = {};
+	subpassDescription.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+	subpassDescription.colorAttachmentCount = 1;
+	subpassDescription.pColorAttachments = &colorAttachmentReference;
+
+	// Create render pass
+	VkRenderPassCreateInfo renderPassCreateInfo = {};
+	renderPassCreateInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+	renderPassCreateInfo.attachmentCount = 1;
+	renderPassCreateInfo.pAttachments = &colorAttachment;
+	renderPassCreateInfo.subpassCount = 1;
+	renderPassCreateInfo.pSubpasses = &subpassDescription;
+
+	if (vkCreateRenderPass(static_cast<VkDevice>(m_Device), &renderPassCreateInfo, nullptr, reinterpret_cast<VkRenderPass*>(&m_RenderPass)) != VK_SUCCESS)
 	{
-		vkDestroyImageView(static_cast<VkDevice>(m_Device), static_cast<VkImageView>(imageView), nullptr);
+		throw std::runtime_error("Failed to create render pass");
 	}
 
-	vkDestroySwapchainKHR(static_cast<VkDevice>(m_Device), static_cast<VkSwapchainKHR>(m_Swapchain), nullptr);
-	vkDestroyDevice(static_cast<VkDevice>(m_Device), nullptr);
-	vkDestroySurfaceKHR(static_cast<VkInstance>(m_VulkanInstance), static_cast<VkSurfaceKHR>(m_Surface), nullptr);
-	vkDestroyDebugUtilsMessengerEXT(static_cast<VkInstance>(m_VulkanInstance), static_cast<VkDebugUtilsMessengerEXT>(m_DebugMessenger), nullptr);
-	vkDestroyInstance(static_cast<VkInstance>(m_VulkanInstance), nullptr);
-
-	s_Logger->debug("Destroying window...");
-
-	delete m_Window;
-}
-
-void glacier::Application::run()
-{
 	/* Create pipeline */
 	Pipeline pipeline = {};
 	initialize(pipeline);
-	
+
 	for (Shader* shader : pipeline.shaders)
 	{
 		VkPipelineShaderStageCreateInfo shaderCreateInfo = {};
 		shaderCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-		
+
 		switch (shader->m_Type)
 		{
 		case ShaderType::Vertex:
@@ -623,13 +638,39 @@ void glacier::Application::run()
 	pipelineLayoutCreateInfo.pushConstantRangeCount = 0;
 	pipelineLayoutCreateInfo.pPushConstantRanges = nullptr;
 
-	VkPipelineLayout pipelineLayout;
-
-	if (vkCreatePipelineLayout(static_cast<VkDevice>(m_Device), &pipelineLayoutCreateInfo, nullptr, &pipelineLayout) != VK_SUCCESS)
+	if (vkCreatePipelineLayout(static_cast<VkDevice>(m_Device), &pipelineLayoutCreateInfo, nullptr, reinterpret_cast<VkPipelineLayout*>(&m_PipelineLayout)) != VK_SUCCESS)
 	{
 		throw std::runtime_error("Failed to create pipeline layout");
 	}
+}
 
+glacier::Application::~Application()
+{
+	s_Logger->info("Terminating application...");
+
+	s_Logger->debug("Destroying Vulkan instance...");
+
+	vkDestroyPipelineLayout(static_cast<VkDevice>(m_Device), static_cast<VkPipelineLayout>(m_PipelineLayout), nullptr);
+	vkDestroyRenderPass(static_cast<VkDevice>(m_Device), static_cast<VkRenderPass>(m_RenderPass), nullptr);
+
+	for (void* imageView : m_ImageViews)
+	{
+		vkDestroyImageView(static_cast<VkDevice>(m_Device), static_cast<VkImageView>(imageView), nullptr);
+	}
+
+	vkDestroySwapchainKHR(static_cast<VkDevice>(m_Device), static_cast<VkSwapchainKHR>(m_Swapchain), nullptr);
+	vkDestroyDevice(static_cast<VkDevice>(m_Device), nullptr);
+	vkDestroySurfaceKHR(static_cast<VkInstance>(m_VulkanInstance), static_cast<VkSurfaceKHR>(m_Surface), nullptr);
+	vkDestroyDebugUtilsMessengerEXT(static_cast<VkInstance>(m_VulkanInstance), static_cast<VkDebugUtilsMessengerEXT>(m_DebugMessenger), nullptr);
+	vkDestroyInstance(static_cast<VkInstance>(m_VulkanInstance), nullptr);
+
+	s_Logger->debug("Destroying window...");
+
+	delete m_Window;
+}
+
+void glacier::Application::run()
+{
 	/* Start game loop */
 	double lastTime = glfwGetTime();
 	while (m_Window->isOpen())
@@ -642,6 +683,4 @@ void glacier::Application::run()
 
 		glfwPollEvents();
 	}
-
-	vkDestroyPipelineLayout(static_cast<VkDevice>(m_Device), pipelineLayout, nullptr);
 }

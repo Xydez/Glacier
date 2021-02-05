@@ -40,13 +40,17 @@ namespace glacier
 
 		friend class Shader;
 	private:
+		ApplicationInfo m_Info;
 		Window* m_Window;
 
 		void* m_VulkanInstance;
 		void* m_DebugMessenger;
+		void* m_PhysicalDevice;
 		void* m_Device;
 		void* m_Surface;
 		void* m_Swapchain;
+		void* m_PipelineLayout;
+		void* m_RenderPass;
 
 		void* m_GraphicsQueue;
 		void* m_PresentationQueue;

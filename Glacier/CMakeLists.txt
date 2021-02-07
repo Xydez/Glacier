@@ -5,7 +5,7 @@ set(Headers
 	include/Window.hpp
 	include/Application.hpp
 	include/Shader.hpp
-	include/Pipeline.hpp
+	include/PipelineInfo.hpp
 )
 
 set(Sources

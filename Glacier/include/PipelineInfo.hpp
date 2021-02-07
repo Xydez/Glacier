@@ -6,7 +6,7 @@
 
 namespace glacier
 {
-	struct Pipeline
+	struct PipelineInfo
 	{
 		std::vector<Shader*> shaders;
 	};

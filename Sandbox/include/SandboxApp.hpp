@@ -4,7 +4,7 @@
 
 glacier::ApplicationInfo generateApplicationInfo()
 {
-	glacier::WindowCreateInfo windowInfo;
+	glacier::WindowCreateInfo windowInfo = {};
 	windowInfo.title = "SandboxApp";
 	windowInfo.width = 800;
 	windowInfo.height = 600;
@@ -31,7 +31,7 @@ public:
 		delete m_FragmentShader;
 	}
 
-	void initialize(glacier::Pipeline& pipeline) override
+	void initialize(glacier::PipelineInfo& pipeline) override
 	{
 		pipeline.shaders.push_back(m_VertexShader);
 		pipeline.shaders.push_back(m_FragmentShader);

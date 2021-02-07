@@ -544,7 +544,7 @@ void glacier::Application::run()
 	/* Create pipeline */
 	g_Logger->debug("Creating pipeline...");
 
-	Pipeline pipeline = {};
+	PipelineInfo pipeline = {};
 	this->initialize(pipeline);
 
 	std::vector<VkPipelineShaderStageCreateInfo> shaderStages;

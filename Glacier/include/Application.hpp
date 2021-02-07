@@ -37,8 +37,6 @@ namespace glacier
 		virtual void update(double deltaTime) {}
 		virtual void render() {}
 
-		GLACIER_API static std::shared_ptr<spdlog::logger> s_Logger;
-
 		friend class Shader;
 	private:
 		ApplicationInfo m_Info;

@@ -10,16 +10,6 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
-std::shared_ptr<spdlog::logger> createLogger(const char* name)
-{
-	std::shared_ptr<spdlog::logger> logger = spdlog::stdout_color_mt(name);
-	logger->set_level(spdlog::level::debug);
-
-	return logger;
-}
-
-std::shared_ptr<spdlog::logger> glacier::Application::s_Logger = createLogger("console");
-
 struct QueueFamilyIndices
 {
 	std::optional<unsigned int> graphicsFamily;
@@ -70,7 +60,7 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityF
 	if (level == spdlog::level::info)
 		return VK_FALSE;
 
-	glacier::Application::s_Logger->log(level, "[Vulkan] {}", pCallbackData->pMessage);
+	glacier::g_Logger->log(level, "[Vulkan] {}", pCallbackData->pMessage);
 	
 	return VK_FALSE;
 }
@@ -227,13 +217,13 @@ bool isDeviceSuitable(VkPhysicalDevice device, VkSurfaceKHR surface)
 glacier::Application::Application(const ApplicationInfo& info)
 	: m_Info(info)
 {
-	s_Logger->info("Initializing application...");
+	g_Logger->info("Initializing application...");
 
-	s_Logger->debug("Creating window...");
+	g_Logger->debug("Creating window...");
 	m_Window = new glacier::Window(m_Info.windowInfo);
 
 	/* Create Vulkan instance */
-	s_Logger->debug("Creating Vulkan instance");
+	g_Logger->debug("Creating Vulkan instance");
 
 	VkApplicationInfo applicationInfo = {};
 	applicationInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
@@ -295,14 +285,14 @@ glacier::Application::Application(const ApplicationInfo& info)
 #endif
 
 	/* Create a window surface */
-	s_Logger->debug("Creating window surface...");
+	g_Logger->debug("Creating window surface...");
 	if (glfwCreateWindowSurface(static_cast<VkInstance>(m_VulkanInstance), static_cast<GLFWwindow*>(m_Window->m_Window), nullptr, reinterpret_cast<VkSurfaceKHR*>(&m_Surface)) != VK_SUCCESS)
 	{
 		throw std::runtime_error("Failed to create window surface");
 	}
 
 	/* Pick a GPU */
-	s_Logger->debug("Picking GPU...");
+	g_Logger->debug("Picking GPU...");
 	unsigned int deviceCount = 0;
 	vkEnumeratePhysicalDevices(static_cast<VkInstance>(m_VulkanInstance), &deviceCount, nullptr);
 
@@ -319,8 +309,8 @@ glacier::Application::Application(const ApplicationInfo& info)
 		VkPhysicalDeviceProperties deviceProperties;
 		vkGetPhysicalDeviceProperties(device, &deviceProperties);
 
-		s_Logger->info("Selected GPU: {}", deviceProperties.deviceName);
-		s_Logger->info("Vulkan version: {}.{}.{}", VK_VERSION_MAJOR(deviceProperties.apiVersion), VK_VERSION_MINOR(deviceProperties.apiVersion), VK_VERSION_PATCH(deviceProperties.apiVersion));
+		g_Logger->info("Selected GPU: {}", deviceProperties.deviceName);
+		g_Logger->info("Vulkan version: {}.{}.{}", VK_VERSION_MAJOR(deviceProperties.apiVersion), VK_VERSION_MINOR(deviceProperties.apiVersion), VK_VERSION_PATCH(deviceProperties.apiVersion));
 
 		m_PhysicalDevice = device;
 		break;
@@ -332,7 +322,7 @@ glacier::Application::Application(const ApplicationInfo& info)
 	}
 
 	/* Create a logical device */
-	s_Logger->debug("Creating logical device...");
+	g_Logger->debug("Creating logical device...");
 
 	QueueFamilyIndices queueFamilyIndices = findQueueFamilies(static_cast<VkPhysicalDevice>(m_PhysicalDevice), static_cast<VkSurfaceKHR>(m_Surface));
 
@@ -379,29 +369,29 @@ glacier::Application::Application(const ApplicationInfo& info)
 		throw std::runtime_error("Failed to create logical device");
 	}
 
-	s_Logger->info("Application initialized.");
+	g_Logger->info("Application initialized.");
 }
 
 glacier::Application::~Application()
 {
-	s_Logger->info("Terminating application...");
+	g_Logger->info("Terminating application...");
 
 	vkDestroyDevice(static_cast<VkDevice>(m_Device), nullptr);
 	vkDestroySurfaceKHR(static_cast<VkInstance>(m_VulkanInstance), static_cast<VkSurfaceKHR>(m_Surface), nullptr);
 	vkDestroyDebugUtilsMessengerEXT(static_cast<VkInstance>(m_VulkanInstance), static_cast<VkDebugUtilsMessengerEXT>(m_DebugMessenger), nullptr);
 	vkDestroyInstance(static_cast<VkInstance>(m_VulkanInstance), nullptr);
 
-	s_Logger->debug("Destroying window...");
+	g_Logger->debug("Destroying window...");
 
 	delete m_Window;
 
-	s_Logger->info("Application terminated.");
+	g_Logger->info("Application terminated.");
 }
 
 void glacier::Application::run()
 {
 	/* Create a swap chain */
-	s_Logger->debug("Creating swap chain");
+	g_Logger->debug("Creating swap chain");
 
 	SwapChainSupportDetails details = querySwapChainSupport(static_cast<VkPhysicalDevice>(m_PhysicalDevice), static_cast<VkSurfaceKHR>(m_Surface));
 
@@ -469,7 +459,7 @@ void glacier::Application::run()
 	}
 
 	/* Create image views */
-	s_Logger->debug("Creating image views...");
+	g_Logger->debug("Creating image views...");
 
 	VkFormat swapchainImageFormat = surfaceFormat.format;
 	VkExtent2D swapchainExtent = extent;
@@ -509,7 +499,7 @@ void glacier::Application::run()
 	//vkGetDeviceQueue(static_cast<VkDevice>(m_Device), queueFamilyIndices.presentationFamily.value(), 0, reinterpret_cast<VkQueue*>(&m_PresentationQueue));
 
 	/* Create render pass */
-	s_Logger->debug("Creating render pass...");
+	g_Logger->debug("Creating render pass...");
 
 	// Create color attachment (To clear the screen)
 	VkAttachmentDescription colorAttachment = {};
@@ -552,7 +542,7 @@ void glacier::Application::run()
 	}
 
 	/* Create pipeline */
-	s_Logger->debug("Creating pipeline...");
+	g_Logger->debug("Creating pipeline...");
 
 	Pipeline pipeline = {};
 	this->initialize(pipeline);
@@ -735,7 +725,7 @@ void glacier::Application::run()
 	}
 
 	/* Start game loop */
-	s_Logger->debug("Starting game loop...");
+	g_Logger->debug("Starting game loop...");
 
 	double lastTime = glfwGetTime();
 	while (m_Window->isOpen())
@@ -749,10 +739,10 @@ void glacier::Application::run()
 		glfwPollEvents();
 	}
 
-	s_Logger->debug("Game loop stopped.");
+	g_Logger->debug("Game loop stopped.");
 
 	/* Destroy renderer */
-	s_Logger->debug("Destroying renderer...");
+	g_Logger->debug("Destroying renderer...");
 
 	vkDestroyPipeline(static_cast<VkDevice>(m_Device), graphicsPipeline, nullptr);
 	vkDestroyPipelineLayout(static_cast<VkDevice>(m_Device), pipelineLayout, nullptr);

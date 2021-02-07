@@ -9,6 +9,7 @@ set(Headers
 )
 
 set(Sources
+	src/common.cpp
 	src/Window.cpp
 	src/Application.cpp
 	src/Shader.cpp

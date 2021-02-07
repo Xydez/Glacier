@@ -6,6 +6,8 @@
 
 int main()
 {
+	glacier::g_Logger->set_level(spdlog::level::debug);
+
 	std::shared_ptr<SandboxApp> app;
 
 	try
@@ -15,8 +17,7 @@ int main()
 	}
 	catch (const std::exception& e)
 	{
-		glacier::Application::s_Logger->error("{}", e.what());
-		
+		glacier::g_Logger->error("{}", e.what());
 	}
 	
 	return 0;

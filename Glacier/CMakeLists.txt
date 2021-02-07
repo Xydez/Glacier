@@ -3,11 +3,17 @@ set(Headers
 	include/glacier.hpp
 	include/common.hpp
 	include/Window.hpp
-	include/Application.hpp)
+	include/Application.hpp
+	include/Shader.hpp
+	include/Pipeline.hpp
+)
 
 set(Sources
+	src/common.cpp
 	src/Window.cpp
-	src/Application.cpp)
+	src/Application.cpp
+	src/Shader.cpp
+)
 
 if(GLACIER_DYNAMIC_LINK)
 add_library(Glacier SHARED ${Sources} ${Headers})

@@ -6,16 +6,18 @@
 
 int main()
 {
-	std::shared_ptr<SandboxApp> app = std::make_shared<SandboxApp>();
+	glacier::g_Logger->set_level(spdlog::level::debug);
+
+	std::shared_ptr<SandboxApp> app;
 
 	try
 	{
+		app = std::make_shared<SandboxApp>();
 		app->run();
 	}
 	catch (const std::exception& e)
 	{
-		std::cout << e.what() << std::endl;
-		return -1;
+		glacier::g_Logger->error("{}", e.what());
 	}
 	
 	return 0;

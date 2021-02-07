@@ -20,7 +20,7 @@ namespace glacier
 
 		bool vsync;
 
-		WindowInfo windowInfo;
+		WindowCreateInfo windowInfo;
 	};
 
 	class Application
@@ -30,13 +30,14 @@ namespace glacier
 		GLACIER_API ~Application();
 
 		GLACIER_API void run();
+		GLACIER_API void stop();
 
 		virtual void initialize(Pipeline& pipeline) {};
 
 		virtual void update(double deltaTime) {}
 		virtual void render() {}
 
-		static std::shared_ptr<spdlog::logger> s_Logger;
+		GLACIER_API static std::shared_ptr<spdlog::logger> s_Logger;
 
 		friend class Shader;
 	private:
@@ -48,13 +49,14 @@ namespace glacier
 		void* m_PhysicalDevice;
 		void* m_Device;
 		void* m_Surface;
-		void* m_Swapchain;
-		void* m_PipelineLayout;
-		void* m_RenderPass;
+		//void* m_Swapchain;
+		//void* m_PipelineLayout;
+		//void* m_RenderPass;
+		//void* m_GraphicsPipeline;
 
-		void* m_GraphicsQueue;
-		void* m_PresentationQueue;
+		//void* m_GraphicsQueue;
+		//void* m_PresentationQueue;
 
-		std::vector<void*> m_ImageViews;
+		//std::vector<void*> m_ImageViews;
 	};
 }

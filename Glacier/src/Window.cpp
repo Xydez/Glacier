@@ -5,7 +5,7 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
-glacier::Window::Window(const WindowInfo& info)
+glacier::Window::Window(const WindowCreateInfo& info)
 {
 	if (!glfwInit())
 		throw std::runtime_error("GLFW failed to initialize");
@@ -29,6 +29,11 @@ bool glacier::Window::isOpen() const
 	return !glfwWindowShouldClose(static_cast<GLFWwindow*>(m_Window));
 }
 
+void glacier::Window::close()
+{
+	glfwSetWindowShouldClose(static_cast<GLFWwindow*>(m_Window), GLFW_TRUE);
+}
+
 glm::uvec2 glacier::Window::getSize() const
 {
 	int width;
@@ -47,7 +52,6 @@ glm::uvec2 glacier::Window::getFramebufferSize() const
 	int width;
 	int height;
 
-	// Vulkan wants size in pixels, not screen coordinates, therefore we use glfwGetFramebufferSize instead of glfwGetWindowSize
 	glfwGetFramebufferSize(static_cast<GLFWwindow*>(m_Window), &width, &height);
 
 	if (width == 0 || height == 0)

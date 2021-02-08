@@ -724,6 +724,99 @@ void glacier::Application::run()
 		throw std::runtime_error("Failed to create graphics pipeline");
 	}
 
+	/* Create framebuffers */
+	g_Logger->debug("Creating framebuffers...");
+
+	std::vector<VkFramebuffer> framebuffers(imageViews.size());
+
+	// Create a framebuffer for every image view
+	for (size_t i = 0; i < imageViews.size(); i++)
+	{
+		std::vector<VkImageView> attachments = {
+			imageViews[i]
+		};
+
+		VkFramebufferCreateInfo framebufferCreateInfo = {};
+		framebufferCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+		framebufferCreateInfo.renderPass = renderPass;
+		framebufferCreateInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
+		framebufferCreateInfo.pAttachments = attachments.data();
+		framebufferCreateInfo.width = swapchainExtent.width;
+		framebufferCreateInfo.height = swapchainExtent.height;
+		framebufferCreateInfo.layers = 1;
+
+		if (vkCreateFramebuffer(static_cast<VkDevice>(m_Device), &framebufferCreateInfo, nullptr, &framebuffers[i]) != VK_SUCCESS)
+		{
+			throw std::runtime_error(fmt::format("Failed to create framebuffer {}", i));
+		}
+	}
+
+	// Create command pool
+	VkCommandPoolCreateInfo commandPoolCreateInfo = {};
+	commandPoolCreateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+	commandPoolCreateInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily.value();
+	commandPoolCreateInfo.flags = 0;
+
+	VkCommandPool commandPool;
+
+	if (vkCreateCommandPool(static_cast<VkDevice>(m_Device), &commandPoolCreateInfo, nullptr, &commandPool) != VK_SUCCESS)
+	{
+		throw std::runtime_error("Failed to create command pool");
+	}
+
+	// Create command buffers
+	std::vector<VkCommandBuffer> commandBuffers(framebuffers.size());
+
+	VkCommandBufferAllocateInfo commandBufferAllocateInfo = {};
+	commandBufferAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	commandBufferAllocateInfo.commandPool = commandPool;
+	commandBufferAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	commandBufferAllocateInfo.commandBufferCount = static_cast<uint32_t>(commandBuffers.size());
+
+	if (vkAllocateCommandBuffers(static_cast<VkDevice>(m_Device), &commandBufferAllocateInfo, commandBuffers.data()) != VK_SUCCESS)
+	{
+		throw std::runtime_error("Failed to allocate command buffers");
+	}
+
+	/* RENDER */
+	for (size_t i = 0; i < commandBuffers.size(); i++)
+	{
+		VkCommandBufferBeginInfo commandBufferBeginInfo = {};
+		commandBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		commandBufferBeginInfo.flags = 0;
+		commandBufferBeginInfo.pInheritanceInfo = nullptr;
+
+		if (vkBeginCommandBuffer(commandBuffers[i], &commandBufferBeginInfo) != VK_SUCCESS)
+		{
+			throw std::runtime_error("Failed to begin command buffer");
+		}
+
+		// Begin render pass
+		VkRenderPassBeginInfo renderPassBeginInfo = {};
+		renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+		renderPassBeginInfo.renderPass = renderPass;
+		renderPassBeginInfo.framebuffer = framebuffers[i];
+
+		renderPassBeginInfo.renderArea.offset = { 0, 0 };
+		renderPassBeginInfo.renderArea.extent = swapchainExtent;
+
+		VkClearValue clearColor = { 0.0f, 0.0f, 0.0f, 1.0f };
+		renderPassBeginInfo.clearValueCount = 1;
+		renderPassBeginInfo.pClearValues = &clearColor;
+
+		vkCmdBeginRenderPass(commandBuffers[i], &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+		vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+		vkCmdDraw(commandBuffers[i], 3, 1, 0, 0);
+
+		vkCmdEndRenderPass(commandBuffers[i]);
+
+		if (vkEndCommandBuffer(commandBuffers[i]) != VK_SUCCESS)
+		{
+			throw std::runtime_error("Failed to end command buffer");
+		}
+	}
+
 	/* Start game loop */
 	g_Logger->debug("Starting game loop...");
 
@@ -741,8 +834,16 @@ void glacier::Application::run()
 
 	g_Logger->debug("Game loop stopped.");
 
+
 	/* Destroy renderer */
 	g_Logger->debug("Destroying renderer...");
+
+	vkDestroyCommandPool(static_cast<VkDevice>(m_Device), commandPool, nullptr);
+
+	for (const VkFramebuffer& framebuffer : framebuffers)
+	{
+		vkDestroyFramebuffer(static_cast<VkDevice>(m_Device), framebuffer, nullptr);
+	}
 
 	vkDestroyPipeline(static_cast<VkDevice>(m_Device), graphicsPipeline, nullptr);
 	vkDestroyPipelineLayout(static_cast<VkDevice>(m_Device), pipelineLayout, nullptr);

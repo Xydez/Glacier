@@ -10,6 +10,8 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
+constexpr unsigned int MAX_BUFFERED_FRAMES = 2;
+
 struct QueueFamilyIndices
 {
 	std::optional<unsigned int> graphicsFamily;
@@ -817,26 +819,136 @@ void glacier::Application::run()
 		}
 	}
 
+	/* Create semaphores */
+	std::vector<VkSemaphore> imageAvailableSemaphores(MAX_BUFFERED_FRAMES);
+	std::vector<VkSemaphore> renderFinishedSemaphores(MAX_BUFFERED_FRAMES);
+	std::vector<VkFence> bufferedFences(MAX_BUFFERED_FRAMES);
+	std::vector<VkFence> bufferedImageFences(swapchainImages.size(), VK_NULL_HANDLE);
+
+	VkSemaphoreCreateInfo semaphoreCreateInfo = {};
+	semaphoreCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+
+	VkFenceCreateInfo fenceCreateInfo = {};
+	fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+	fenceCreateInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+
+	for (size_t i = 0; i < MAX_BUFFERED_FRAMES; i++)
+	{
+		if (vkCreateSemaphore(static_cast<VkDevice>(m_Device), &semaphoreCreateInfo, nullptr, &(imageAvailableSemaphores[i])) != VK_SUCCESS)
+		{
+			throw std::runtime_error("Failed to create image available semaphore");
+		}
+		
+		if (vkCreateSemaphore(static_cast<VkDevice>(m_Device), &semaphoreCreateInfo, nullptr, &(renderFinishedSemaphores[i])) != VK_SUCCESS)
+		{
+			throw std::runtime_error("Failed to create render finished semaphore");
+		}
+
+		if (vkCreateFence(static_cast<VkDevice>(m_Device), &fenceCreateInfo, nullptr, &(bufferedFences[i])) != VK_SUCCESS)
+		{
+			throw std::runtime_error("Failed to create fence");
+		}
+	}
+
+	// END
+
+	//VkSemaphoreCreateInfo semaphoreCreateInfo = {};
+	//semaphoreCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+	//
+	
+
+	/* Get queues */
+	VkQueue graphicsQueue;
+	vkGetDeviceQueue(static_cast<VkDevice>(m_Device), queueFamilyIndices.graphicsFamily.value(), 0, &graphicsQueue);
+
+	VkQueue presentQueue;
+	vkGetDeviceQueue(static_cast<VkDevice>(m_Device), queueFamilyIndices.presentationFamily.value(), 0, &presentQueue);
+
 	/* Start game loop */
 	g_Logger->debug("Starting game loop...");
+
+	size_t currentFrame = 0;
 
 	double lastTime = glfwGetTime();
 	while (m_Window->isOpen())
 	{
+		// Wait until the next frame should be drawn
+		vkWaitForFences(static_cast<VkDevice>(m_Device), 1, &(bufferedFences[currentFrame]), VK_TRUE, UINT64_MAX);
+
 		double deltaTime = glfwGetTime() - lastTime;
 		lastTime = glfwGetTime();
 
 		update(deltaTime);
 		render();
 
+		/* Draw frame */
+		uint32_t imageIndex;
+		vkAcquireNextImageKHR(static_cast<VkDevice>(m_Device), swapchain, UINT64_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
+
+		if (bufferedImageFences[imageIndex] != VK_NULL_HANDLE)
+		{
+			vkWaitForFences(static_cast<VkDevice>(m_Device), 1, &(bufferedImageFences[imageIndex]), VK_TRUE, UINT64_MAX);
+		}
+
+		bufferedImageFences[imageIndex] = bufferedFences[currentFrame];
+
+		VkSubmitInfo submitInfo = {};
+		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+
+		VkSemaphore waitSemaphores[] = { imageAvailableSemaphores[currentFrame] };
+		VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+		submitInfo.waitSemaphoreCount = 1;
+		submitInfo.pWaitSemaphores = waitSemaphores;
+		submitInfo.pWaitDstStageMask = waitStages;
+
+		submitInfo.commandBufferCount = 1;
+		submitInfo.pCommandBuffers = &commandBuffers[imageIndex];
+
+		VkSemaphore signalSemaphores[] = { renderFinishedSemaphores[currentFrame] };
+		submitInfo.signalSemaphoreCount = 1;
+		submitInfo.pSignalSemaphores = signalSemaphores;
+
+		vkResetFences(static_cast<VkDevice>(m_Device), 1, &(bufferedFences[currentFrame]));
+		if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, bufferedFences[currentFrame]) != VK_SUCCESS)
+		{
+			throw std::runtime_error("Failed to submit draw command buffer");
+		}
+
+		VkPresentInfoKHR presentInfo = {};
+		presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+		presentInfo.waitSemaphoreCount = 1;
+		presentInfo.pWaitSemaphores = signalSemaphores;
+
+		VkSwapchainKHR swapchains[] = { swapchain };
+		presentInfo.swapchainCount = 1;
+		presentInfo.pSwapchains = swapchains; // TODO: &swapchain ?
+		presentInfo.pImageIndices = &imageIndex;
+
+		vkQueuePresentKHR(presentQueue, &presentInfo);
+
+		currentFrame = (currentFrame + 1) % MAX_BUFFERED_FRAMES;
+
+		//vkDeviceWaitIdle(static_cast<VkDevice>(m_Device));
+
+		// https://vulkan-tutorial.com/en/Drawing_a_triangle/Drawing/Rendering_and_presentation#page_Subpass-dependencies
+
 		glfwPollEvents();
 	}
 
 	g_Logger->debug("Game loop stopped.");
 
+	// Wait for m_Device to be finished
+	vkDeviceWaitIdle(static_cast<VkDevice>(m_Device));
 
 	/* Destroy renderer */
 	g_Logger->debug("Destroying renderer...");
+
+	for (size_t i = 0; i < MAX_BUFFERED_FRAMES; i++)
+	{
+		vkDestroySemaphore(static_cast<VkDevice>(m_Device), imageAvailableSemaphores[i], nullptr);
+		vkDestroySemaphore(static_cast<VkDevice>(m_Device), renderFinishedSemaphores[i], nullptr);
+		vkDestroyFence(static_cast<VkDevice>(m_Device), bufferedFences[i], nullptr);
+	}
 
 	vkDestroyCommandPool(static_cast<VkDevice>(m_Device), commandPool, nullptr);
 

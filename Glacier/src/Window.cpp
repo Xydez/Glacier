@@ -54,7 +54,7 @@ glm::uvec2 glacier::Window::getFramebufferSize() const
 
 	glfwGetFramebufferSize(static_cast<GLFWwindow*>(m_Window), &width, &height);
 
-	if (width == 0 || height == 0)
+	if (width < 0 || height < 0)
 		throw std::runtime_error("GLFW returned an invalid framebuffer size");
 
 	return glm::uvec2(static_cast<unsigned int>(width), static_cast<unsigned int>(height));

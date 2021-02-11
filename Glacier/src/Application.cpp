@@ -227,7 +227,7 @@ bool isDeviceSuitable(VkPhysicalDevice device, VkSurfaceKHR surface)
 void createSwapchain(const VkPhysicalDevice& physicalDevice, const VkDevice& device, const VkSurfaceKHR& surface, const glacier::ApplicationInfo& applicationInfo, const glacier::Window& window, const SwapchainSupportDetails& details, const VkSurfaceFormatKHR& surfaceFormat, const VkPresentModeKHR& presentMode, const VkExtent2D& extent, const VkSwapchainKHR* oldSwapchain, VkSwapchainKHR* pSwapchain)
 {
 	/* Create a swap chain */
-	glacier::g_Logger->debug("Creating swap chain");
+	glacier::g_Logger->trace("Creating swap chain");
 
 	unsigned int imageCount = details.capabilities.minImageCount + 1;
 	if (details.capabilities.minImageCount > 0 && imageCount > details.capabilities.maxImageCount)
@@ -289,7 +289,7 @@ void createSwapchain(const VkPhysicalDevice& physicalDevice, const VkDevice& dev
 // Create image views
 void createImageViews(const VkDevice& device, const VkSurfaceFormatKHR& surfaceFormat, const VkExtent2D& extent, const VkSwapchainKHR& swapchain, std::vector<VkImage>& swapchainImages, std::vector<VkImageView>& imageViews)
 {
-	glacier::g_Logger->debug("Creating image views...");
+	glacier::g_Logger->trace("Creating image views...");
 
 	VkFormat swapchainImageFormat = surfaceFormat.format;
 	VkExtent2D swapchainExtent = extent;
@@ -331,7 +331,7 @@ void createImageViews(const VkDevice& device, const VkSurfaceFormatKHR& surfaceF
 // Create render pass
 void createRenderPass(const VkDevice& device, const VkSurfaceFormatKHR& surfaceFormat, VkRenderPass* renderPass)
 {
-	glacier::g_Logger->debug("Creating render pass...");
+	glacier::g_Logger->trace("Creating render pass...");
 
 	// Create color attachment (To clear the screen)
 	VkAttachmentDescription colorAttachment = {};
@@ -375,7 +375,7 @@ void createRenderPass(const VkDevice& device, const VkSurfaceFormatKHR& surfaceF
 // Create graphics pipeline
 void createPipeline(const VkDevice& device, const glacier::Window& window, const VkRenderPass& renderPass, const std::vector<ShaderInfo>& shaders, VkPipeline* pipeline, VkPipelineLayout* pipelineLayout)
 {
-	glacier::g_Logger->debug("Creating pipeline...");
+	glacier::g_Logger->trace("Creating pipeline...");
 
 	std::vector<VkPipelineShaderStageCreateInfo> shaderStages;
 
@@ -538,7 +538,7 @@ void createPipeline(const VkDevice& device, const glacier::Window& window, const
 // Create framebuffers
 void createFramebuffers(const VkDevice& device, const std::vector<VkImageView>& imageViews, const VkRenderPass& renderPass, const VkExtent2D& swapchainExtent, std::vector<VkFramebuffer>& framebuffers)
 {
-	glacier::g_Logger->debug("Creating framebuffers...");
+	glacier::g_Logger->trace("Creating framebuffers...");
 
 	framebuffers.clear();
 	framebuffers.resize(imageViews.size());
@@ -568,6 +568,8 @@ void createFramebuffers(const VkDevice& device, const std::vector<VkImageView>& 
 // Create command pool
 void createCommandPool(const VkDevice& device, const QueueFamilyIndices& queueFamilyIndices, VkCommandPool* commandPool)
 {
+	glacier::g_Logger->trace("Creating command pool");
+
 	VkCommandPoolCreateInfo commandPoolCreateInfo = {};
 	commandPoolCreateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
 	commandPoolCreateInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily.value();
@@ -579,8 +581,10 @@ void createCommandPool(const VkDevice& device, const QueueFamilyIndices& queueFa
 	}
 }
 // Create command buffers
-void createCommandBuffers(const VkDevice& device, const std::vector<VkFramebuffer>& framebuffers, const VkCommandPool& commandPool, std::vector<VkCommandBuffer>& commandBuffers)
+void createCommandBuffers(const VkDevice& device, const std::vector<VkFramebuffer>& framebuffers, const VkCommandPool& commandPool, const VkRenderPass& renderPass, const VkExtent2D& extent, const VkPipeline& pipeline, std::vector<VkCommandBuffer>& commandBuffers)
 {
+	glacier::g_Logger->trace("Creating command buffers...");
+
 	commandBuffers.clear();
 	commandBuffers.resize(framebuffers.size());
 
@@ -593,6 +597,44 @@ void createCommandBuffers(const VkDevice& device, const std::vector<VkFramebuffe
 	if (vkAllocateCommandBuffers(device, &commandBufferAllocateInfo, commandBuffers.data()) != VK_SUCCESS)
 	{
 		throw std::runtime_error("Failed to allocate command buffers");
+	}
+
+	for (size_t i = 0; i < commandBuffers.size(); i++)
+	{
+		VkCommandBufferBeginInfo commandBufferBeginInfo = {};
+		commandBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		commandBufferBeginInfo.flags = 0;
+		commandBufferBeginInfo.pInheritanceInfo = nullptr;
+
+		if (vkBeginCommandBuffer(commandBuffers[i], &commandBufferBeginInfo) != VK_SUCCESS)
+		{
+			throw std::runtime_error("Failed to begin command buffer");
+		}
+
+		// Begin render pass
+		VkRenderPassBeginInfo renderPassBeginInfo = {};
+		renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+		renderPassBeginInfo.renderPass = renderPass;
+		renderPassBeginInfo.framebuffer = framebuffers[i];
+
+		renderPassBeginInfo.renderArea.offset = { 0, 0 };
+		renderPassBeginInfo.renderArea.extent = extent;
+
+		VkClearValue clearColor = { 0.0f, 0.0f, 0.0f, 1.0f };
+		renderPassBeginInfo.clearValueCount = 1;
+		renderPassBeginInfo.pClearValues = &clearColor;
+
+		vkCmdBeginRenderPass(commandBuffers[i], &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+		vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+		vkCmdDraw(commandBuffers[i], 3, 1, 0, 0);
+
+		vkCmdEndRenderPass(commandBuffers[i]);
+
+		if (vkEndCommandBuffer(commandBuffers[i]) != VK_SUCCESS)
+		{
+			throw std::runtime_error("Failed to end command buffer");
+		}
 	}
 }
 // Destroy swapchain
@@ -862,46 +904,9 @@ void glacier::Application::run()
 
 	/* Create command buffers */
 	std::vector<VkCommandBuffer> commandBuffers;
-	createCommandBuffers(static_cast<VkDevice>(m_Device), framebuffers, commandPool, commandBuffers);
+	createCommandBuffers(static_cast<VkDevice>(m_Device), framebuffers, commandPool, renderPass, extent, pipeline, commandBuffers);
 
 	/* RENDER */
-	for (size_t i = 0; i < commandBuffers.size(); i++)
-	{
-		VkCommandBufferBeginInfo commandBufferBeginInfo = {};
-		commandBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-		commandBufferBeginInfo.flags = 0;
-		commandBufferBeginInfo.pInheritanceInfo = nullptr;
-
-		if (vkBeginCommandBuffer(commandBuffers[i], &commandBufferBeginInfo) != VK_SUCCESS)
-		{
-			throw std::runtime_error("Failed to begin command buffer");
-		}
-
-		// Begin render pass
-		VkRenderPassBeginInfo renderPassBeginInfo = {};
-		renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-		renderPassBeginInfo.renderPass = renderPass;
-		renderPassBeginInfo.framebuffer = framebuffers[i];
-
-		renderPassBeginInfo.renderArea.offset = { 0, 0 };
-		renderPassBeginInfo.renderArea.extent = extent;
-
-		VkClearValue clearColor = { 0.0f, 0.0f, 0.0f, 1.0f };
-		renderPassBeginInfo.clearValueCount = 1;
-		renderPassBeginInfo.pClearValues = &clearColor;
-
-		vkCmdBeginRenderPass(commandBuffers[i], &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
-
-		vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
-		vkCmdDraw(commandBuffers[i], 3, 1, 0, 0);
-
-		vkCmdEndRenderPass(commandBuffers[i]);
-
-		if (vkEndCommandBuffer(commandBuffers[i]) != VK_SUCCESS)
-		{
-			throw std::runtime_error("Failed to end command buffer");
-		}
-	}
 
 	/* Create semaphores */
 	std::vector<VkSemaphore> imageAvailableSemaphores(MAX_BUFFERED_FRAMES);
@@ -967,7 +972,57 @@ void glacier::Application::run()
 
 		/* Draw frame */
 		uint32_t imageIndex;
-		vkAcquireNextImageKHR(static_cast<VkDevice>(m_Device), swapchain, UINT64_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
+		VkResult result = vkAcquireNextImageKHR(static_cast<VkDevice>(m_Device), swapchain, UINT64_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
+
+		if (result == VK_ERROR_OUT_OF_DATE_KHR)
+		{
+			/* Check if the window was minimized */
+			glm::uvec2 size = m_Window->getFramebufferSize();
+			if (size.x == 0 || size.y == 0)
+			{
+				glacier::g_Logger->trace("Window is minimized");
+
+				while (size.x == 0 || size.y == 0)
+				{
+					size = m_Window->getFramebufferSize();
+					glfwWaitEvents();
+				}
+
+				glacier::g_Logger->trace("Window is no longer minimized");
+			}
+
+			/* Recreate the swapchain */
+			glacier::g_Logger->debug("Recreating swapchain...");
+
+			vkDeviceWaitIdle(static_cast<VkDevice>(m_Device));
+
+			// Destroy the current swapchain
+			destroySwapchain(static_cast<VkDevice>(m_Device), framebuffers, commandPool, commandBuffers, &pipeline, &pipelineLayout, &renderPass, imageViews, &swapchain);
+
+			details = querySwapchainSupport(static_cast<VkPhysicalDevice>(m_PhysicalDevice), static_cast<VkSurfaceKHR>(m_Surface));
+
+			surfaceFormat = chooseSwapSurfaceFormat(details.formats);
+			presentMode = choosePresentMode(details.presentModes, m_Info.vsync);
+			extent = chooseSwapExtent(details.capabilities, *m_Window);
+
+			createSwapchain(static_cast<VkPhysicalDevice>(m_PhysicalDevice), static_cast<VkDevice>(m_Device), static_cast<VkSurfaceKHR>(m_Surface), m_Info, *m_Window, details, surfaceFormat, presentMode, extent, nullptr, &swapchain);
+
+			createImageViews(static_cast<VkDevice>(m_Device), surfaceFormat, extent, swapchain, swapchainImages, imageViews);
+
+			createRenderPass(static_cast<VkDevice>(m_Device), surfaceFormat, &renderPass);
+
+			createPipeline(static_cast<VkDevice>(m_Device), *m_Window, renderPass, shaderInfos, &pipeline, &pipelineLayout);
+
+			createFramebuffers(static_cast<VkDevice>(m_Device), imageViews, renderPass, extent, framebuffers);
+
+			createCommandBuffers(static_cast<VkDevice>(m_Device), framebuffers, commandPool, renderPass, extent, pipeline, commandBuffers);
+
+			continue;
+		}
+		else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
+		{
+			throw std::runtime_error("Failed to acquire swapchain image");
+		}
 
 		if (bufferedImageFences[imageIndex] != VK_NULL_HANDLE)
 		{

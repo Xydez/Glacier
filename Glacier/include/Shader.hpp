@@ -26,6 +26,8 @@ namespace glacier
 		// Delete move
 		Shader(Shader&&) = delete;
 		Shader& operator=(Shader&&) = delete;
+
+		inline ShaderType getType() const { return m_Type; }
 	private:
 		const Application& m_Application;
 		void* m_ShaderModule;

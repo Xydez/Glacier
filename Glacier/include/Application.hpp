@@ -6,7 +6,7 @@
 #include <spdlog/sinks/stdout_color_sinks.h>
 
 #include "Window.hpp"
-#include "Pipeline.hpp"
+#include "PipelineInfo.hpp"
 
 namespace glacier
 {
@@ -32,7 +32,7 @@ namespace glacier
 		GLACIER_API void run();
 		GLACIER_API void stop();
 
-		virtual void initialize(Pipeline& pipeline) {};
+		virtual void initialize(PipelineInfo& pipeline) {};
 
 		virtual void update(double deltaTime) {}
 		virtual void render() {}

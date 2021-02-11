@@ -845,6 +845,8 @@ glacier::Application::~Application()
 
 void glacier::Application::run()
 {
+	g_Logger->debug("Creating swapchain...");
+
 	/* Get queue family indices */
 	QueueFamilyIndices queueFamilyIndices = findQueueFamilies(static_cast<VkPhysicalDevice>(m_PhysicalDevice), static_cast<VkSurfaceKHR>(m_Surface));
 

@@ -1,5 +1,6 @@
 #include "Shader.hpp"
 #include "Application.hpp"
+#include "File.hpp"
 
 #include <fstream>
 
@@ -9,6 +10,7 @@
 glacier::Shader::Shader(const Application& application, std::string_view path, const ShaderType& type)
 	: m_Application(application), m_Type(type)
 {
+	/*
 	std::ifstream stream(path.data(), std::ios::ate | std::ios::binary);
 
 	if (!stream)
@@ -23,6 +25,9 @@ glacier::Shader::Shader(const Application& application, std::string_view path, c
 	stream.read(buffer.data(), size);
 
 	stream.close();
+	*/
+
+	Buffer buffer = File(path).read();
 
 	/* Create shader module */
 	VkShaderModuleCreateInfo shaderCreateInfo = { };

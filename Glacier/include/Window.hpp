@@ -49,14 +49,14 @@ namespace glacier
 		 * @see glm::uvec2
 		 * @return An unsigned vector containing the size of the window.
 		 */
-		glm::uvec2 getSize() const;
+		GLACIER_API glm::uvec2 getSize() const;
 
 		/**
 		 * Ge the size of the window in pixels
 		 * @see glm::uvec2
 		 * @return An unsigned vector containing the size of the window.
 		 */
-		glm::uvec2 getFramebufferSize() const;
+		GLACIER_API glm::uvec2 getFramebufferSize() const;
 
 		friend class Application;
 	private:

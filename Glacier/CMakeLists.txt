@@ -6,6 +6,8 @@ set(Headers
 	include/Application.hpp
 	include/Shader.hpp
 	include/PipelineInfo.hpp
+	include/File.hpp
+	include/Buffer.hpp
 )
 
 set(Sources
@@ -13,6 +15,7 @@ set(Sources
 	src/Window.cpp
 	src/Application.cpp
 	src/Shader.cpp
+	src/File.cpp
 )
 
 if(GLACIER_DYNAMIC_LINK)

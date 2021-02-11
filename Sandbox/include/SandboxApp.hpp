@@ -21,8 +21,8 @@ public:
 	SandboxApp()
 		: Application(generateApplicationInfo())
 	{
-		m_VertexShader = new glacier::Shader(*this, "../Sandbox/assets/shaders/vertex.spv", glacier::ShaderType::Vertex);
-		m_FragmentShader = new glacier::Shader(*this, "../Sandbox/assets/shaders/fragment.spv", glacier::ShaderType::Fragment);
+		m_VertexShader = new glacier::Shader(*this, "shaders/vertex.spv", glacier::ShaderType::Vertex);
+		m_FragmentShader = new glacier::Shader(*this, "shaders/fragment.spv", glacier::ShaderType::Fragment);
 	}
 
 	~SandboxApp()

@@ -8,6 +8,7 @@ set(Headers
 	include/PipelineInfo.hpp
 	include/File.hpp
 	include/Buffer.hpp
+	include/VertexBuffer.hpp
 )
 
 set(Sources
@@ -16,6 +17,7 @@ set(Sources
 	src/Application.cpp
 	src/Shader.cpp
 	src/File.cpp
+	src/VertexBuffer.cpp
 )
 
 if(GLACIER_DYNAMIC_LINK)

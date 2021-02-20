@@ -16,6 +16,13 @@ glacier::Window::Window(const WindowCreateInfo& info)
 	m_Window = glfwCreateWindow(info.width, info.height, info.title, nullptr, nullptr);
 	if (m_Window == nullptr)
 		throw std::runtime_error("Failed to create a window");
+
+	glfwSetWindowSizeLimits(static_cast<GLFWwindow*>(m_Window),
+		info.minWidth == 0 ? GLFW_DONT_CARE : info.minWidth,
+		info.minHeight == 0 ? GLFW_DONT_CARE : info.minHeight,
+		info.maxWidth == 0 ? GLFW_DONT_CARE : info.maxWidth,
+		info.maxHeight == 0 ? GLFW_DONT_CARE : info.maxHeight
+	);
 }
 
 glacier::Window::~Window()

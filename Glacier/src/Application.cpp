@@ -2,6 +2,7 @@
 #pragma warning(disable: 26812)
 
 #include "Application.hpp"
+#include "VertexBuffer.hpp"
 
 #include <vector>
 #include <iostream>
@@ -42,6 +43,12 @@ struct ShaderInfo
 {
 	VkShaderStageFlagBits stage;
 	VkShaderModule module;
+};
+
+struct BufferInfo
+{
+	VkVertexInputBindingDescription inputBinding;
+	std::vector<VkVertexInputAttributeDescription> inputAttributes;
 };
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT severity, VkDebugUtilsMessageTypeFlagsEXT type, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData)
@@ -286,6 +293,7 @@ void createSwapchain(const VkPhysicalDevice& physicalDevice, const VkDevice& dev
 		throw std::runtime_error("Failed to create swapchain");
 	}
 }
+
 // Create image views
 void createImageViews(const VkDevice& device, const VkSurfaceFormatKHR& surfaceFormat, const VkExtent2D& extent, const VkSwapchainKHR& swapchain, std::vector<VkImage>& swapchainImages, std::vector<VkImageView>& imageViews)
 {
@@ -373,7 +381,7 @@ void createRenderPass(const VkDevice& device, const VkSurfaceFormatKHR& surfaceF
 }
 
 // Create graphics pipeline
-void createPipeline(const VkDevice& device, const glacier::Window& window, const VkRenderPass& renderPass, const std::vector<ShaderInfo>& shaders, VkPipeline* pipeline, VkPipelineLayout* pipelineLayout)
+void createPipeline(const VkDevice& device, const glacier::Window& window, const VkRenderPass& renderPass, const BufferInfo& vertexBuffer, const std::vector<ShaderInfo>& shaders, VkPipeline* pipeline, VkPipelineLayout* pipelineLayout)
 {
 	glacier::g_Logger->trace("Creating pipeline...");
 
@@ -393,7 +401,6 @@ void createPipeline(const VkDevice& device, const glacier::Window& window, const
 				hasVertex = true;
 			else
 				throw std::runtime_error("You can't have more than one vertex shader");
-
 		}
 		
 		if (info.stage & VK_SHADER_STAGE_FRAGMENT_BIT)
@@ -420,10 +427,28 @@ void createPipeline(const VkDevice& device, const glacier::Window& window, const
 
 	VkPipelineVertexInputStateCreateInfo vertexInputCreateInfo = {};
 	vertexInputCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-	vertexInputCreateInfo.vertexBindingDescriptionCount = 0;
-	vertexInputCreateInfo.pVertexBindingDescriptions = nullptr;
-	vertexInputCreateInfo.vertexAttributeDescriptionCount = 0;
-	vertexInputCreateInfo.pVertexAttributeDescriptions = nullptr;
+
+	// TODO: Vertex buffers
+
+	// EDIT
+	//vertexInputCreateInfo.vertexBindingDescriptionCount = 0;
+	//vertexInputCreateInfo.pVertexBindingDescriptions = nullptr;
+	//vertexInputCreateInfo.vertexAttributeDescriptionCount = 0;
+	//vertexInputCreateInfo.pVertexAttributeDescriptions = nullptr;
+	// ->
+	
+	vertexInputCreateInfo.vertexBindingDescriptionCount = 1;
+	vertexInputCreateInfo.pVertexBindingDescriptions = &vertexBuffer.inputBinding;
+	vertexInputCreateInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(vertexBuffer.inputAttributes.size());
+	vertexInputCreateInfo.pVertexAttributeDescriptions = vertexBuffer.inputAttributes.data();
+
+	/*
+	 * float:	VK_FORMAT_R32_SFLOAT
+	 * vec2:	VK_FORMAT_R32G32_SFLOAT
+	 * vec3:	VK_FORMAT_R32G32B32_SFLOAT
+	 * vec4:	VK_FORMAT_R32G32B32A32_SFLOAT
+	 */
+	// END
 
 	VkViewport viewport = {};
 	viewport.x = 0.0f;
@@ -581,7 +606,7 @@ void createCommandPool(const VkDevice& device, const QueueFamilyIndices& queueFa
 	}
 }
 // Create command buffers
-void createCommandBuffers(const VkDevice& device, const std::vector<VkFramebuffer>& framebuffers, const VkCommandPool& commandPool, const VkRenderPass& renderPass, const VkExtent2D& extent, const VkPipeline& pipeline, std::vector<VkCommandBuffer>& commandBuffers)
+void createCommandBuffers(const VkDevice& device, const std::vector<VkFramebuffer>& framebuffers, const VkCommandPool& commandPool, const VkRenderPass& renderPass, const VkExtent2D& extent, const VkPipeline& pipeline, const VkBuffer& vertexBuffer, uint32_t vertices, std::vector<VkCommandBuffer>& commandBuffers)
 {
 	glacier::g_Logger->trace("Creating command buffers...");
 
@@ -627,7 +652,14 @@ void createCommandBuffers(const VkDevice& device, const std::vector<VkFramebuffe
 		vkCmdBeginRenderPass(commandBuffers[i], &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
 		vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
-		vkCmdDraw(commandBuffers[i], 3, 1, 0, 0);
+
+		// $ BEGIN $
+		VkBuffer vertexBuffers[] = { vertexBuffer };
+		VkDeviceSize offsets[] = { 0 };
+		vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, vertexBuffers, offsets);
+		// $ END $
+
+		vkCmdDraw(commandBuffers[i], vertices, 1, 0, 0);
 
 		vkCmdEndRenderPass(commandBuffers[i]);
 
@@ -894,7 +926,19 @@ void glacier::Application::run()
 
 	VkPipeline pipeline;
 	VkPipelineLayout pipelineLayout;
-	createPipeline(static_cast<VkDevice>(m_Device), *m_Window, renderPass, shaderInfos, &pipeline, &pipelineLayout);
+	
+	if (pipelineInfo.vertexBuffer == nullptr)
+		throw std::runtime_error("No vertex buffer provided in pipeline info");
+
+	VkVertexInputBindingDescription vertexInputBindingDescription = pipelineInfo.vertexBuffer->m_Layout.getBindingDescription();
+	std::vector<VkVertexInputAttributeDescription> vertexInputAttributeDescriptions = pipelineInfo.vertexBuffer->m_Layout.getAttributeDescriptions();
+
+	BufferInfo vertexBuffer = {
+		pipelineInfo.vertexBuffer->m_Layout.getBindingDescription(),
+		pipelineInfo.vertexBuffer->m_Layout.getAttributeDescriptions()
+	};
+
+	createPipeline(static_cast<VkDevice>(m_Device), *m_Window, renderPass, vertexBuffer, shaderInfos, &pipeline, &pipelineLayout);
 
 	/* Create framebuffers */
 	std::vector<VkFramebuffer> framebuffers;
@@ -906,7 +950,7 @@ void glacier::Application::run()
 
 	/* Create command buffers */
 	std::vector<VkCommandBuffer> commandBuffers;
-	createCommandBuffers(static_cast<VkDevice>(m_Device), framebuffers, commandPool, renderPass, extent, pipeline, commandBuffers);
+	createCommandBuffers(static_cast<VkDevice>(m_Device), framebuffers, commandPool, renderPass, extent, pipeline, static_cast<VkBuffer>(pipelineInfo.vertexBuffer->m_Handle), pipelineInfo.vertexCount, commandBuffers);
 
 	/* RENDER */
 
@@ -940,13 +984,6 @@ void glacier::Application::run()
 			throw std::runtime_error("Failed to create fence");
 		}
 	}
-
-	// END
-
-	//VkSemaphoreCreateInfo semaphoreCreateInfo = {};
-	//semaphoreCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-	//
-	
 
 	/* Get queues */
 	VkQueue graphicsQueue;
@@ -1013,11 +1050,11 @@ void glacier::Application::run()
 
 			createRenderPass(static_cast<VkDevice>(m_Device), surfaceFormat, &renderPass);
 
-			createPipeline(static_cast<VkDevice>(m_Device), *m_Window, renderPass, shaderInfos, &pipeline, &pipelineLayout);
+			createPipeline(static_cast<VkDevice>(m_Device), *m_Window, renderPass, vertexBuffer, shaderInfos, &pipeline, &pipelineLayout);
 
 			createFramebuffers(static_cast<VkDevice>(m_Device), imageViews, renderPass, extent, framebuffers);
 
-			createCommandBuffers(static_cast<VkDevice>(m_Device), framebuffers, commandPool, renderPass, extent, pipeline, commandBuffers);
+			createCommandBuffers(static_cast<VkDevice>(m_Device), framebuffers, commandPool, renderPass, extent, pipeline, static_cast<VkBuffer>(pipelineInfo.vertexBuffer->m_Handle), pipelineInfo.vertexCount, commandBuffers);
 
 			continue;
 		}

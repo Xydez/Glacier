@@ -47,14 +47,7 @@ namespace glacier
 		void* m_PhysicalDevice;
 		void* m_Device;
 		void* m_Surface;
-		//void* m_Swapchain;
-		//void* m_PipelineLayout;
-		//void* m_RenderPass;
-		//void* m_GraphicsPipeline;
 
-		//void* m_GraphicsQueue;
-		//void* m_PresentationQueue;
-
-		//std::vector<void*> m_ImageViews;
+		friend class VertexBuffer;
 	};
 }

@@ -19,6 +19,9 @@ glacier::ApplicationInfo generateApplicationInfo()
 
 class SandboxApp : public glacier::Application
 {
+private:
+	unsigned int frames = 0;
+	double timer = 0.0;
 public:
 	SandboxApp()
 		: Application(generateApplicationInfo()), m_Pipeline(nullptr), m_VertexShaderSource(nullptr), m_FragmentShaderSource(nullptr), m_VertexShader(nullptr), m_FragmentShader(nullptr), m_VertexBuffer(nullptr)
@@ -59,13 +62,12 @@ public:
 		renderer->bindPipeline(*m_Pipeline, 3);
 	}
 
-	void update(double delta) override
-	{
-
-	}
+	void update(double delta) override {}
 
 	void render(glacier::Renderer* renderer) override
 	{
+		renderer->unbindPipeline();
+		renderer->bindPipeline(*m_Pipeline, 3);
 	}
 
 	void terminateRenderer(glacier::Renderer* renderer) override

@@ -374,7 +374,6 @@ void glacier::Renderer::bindPipeline(const Pipeline& pipeline, uint32_t vertices
 
 void glacier::Renderer::unbindPipeline()
 {
-	//TODO: Wait for the device to finish
 	vkDeviceWaitIdle(static_cast<VkDevice>(m_Application->m_Device));
 
 	vkFreeCommandBuffers(static_cast<VkDevice>(m_Application->m_Device), static_cast<VkCommandPool>(m_CommandPool), static_cast<uint32_t>(m_CommandBuffers.size()), reinterpret_cast<VkCommandBuffer*>(m_CommandBuffers.data()));
@@ -421,6 +420,8 @@ glacier::Renderer::Renderer(Application* application)
 
 glacier::Renderer::~Renderer()
 {
+	vkDeviceWaitIdle(static_cast<VkDevice>(m_Application->m_Device));
+
 	std::vector<VkFramebuffer>* framebuffers = reinterpret_cast<std::vector<VkFramebuffer>*>(&m_Framebuffers);
 	std::vector<VkCommandBuffer>* commandBuffers = reinterpret_cast<std::vector<VkCommandBuffer>*>(&m_CommandBuffers);
 	std::vector<VkImageView>* imageViews = reinterpret_cast<std::vector<VkImageView>*>(&m_ImageViews);

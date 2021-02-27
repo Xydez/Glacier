@@ -258,6 +258,8 @@ glacier::Application::~Application()
 
 void glacier::Application::run()
 {
+	VkResult result = VK_SUCCESS;
+
 	initialize();
 
 	m_Renderer = new Renderer(this);
@@ -278,19 +280,22 @@ void glacier::Application::run()
 
 	for (size_t i = 0; i < MAX_BUFFERED_FRAMES; i++)
 	{
-		if (vkCreateSemaphore(static_cast<VkDevice>(m_Device), &semaphoreCreateInfo, nullptr, &(imageAvailableSemaphores[i])) != VK_SUCCESS)
+		result = vkCreateSemaphore(static_cast<VkDevice>(m_Device), &semaphoreCreateInfo, nullptr, &(imageAvailableSemaphores[i]));
+		if (result != VK_SUCCESS)
 		{
-			throw std::runtime_error("Failed to create image available semaphore");
+			throw std::runtime_error(fmt::format("Failed to create image available semaphore (Returned {})", result));
 		}
 
-		if (vkCreateSemaphore(static_cast<VkDevice>(m_Device), &semaphoreCreateInfo, nullptr, &(renderFinishedSemaphores[i])) != VK_SUCCESS)
+		result = vkCreateSemaphore(static_cast<VkDevice>(m_Device), &semaphoreCreateInfo, nullptr, &(renderFinishedSemaphores[i]));
+		if (result != VK_SUCCESS)
 		{
-			throw std::runtime_error("Failed to create render finished semaphore");
+			throw std::runtime_error(fmt::format("Failed to create render finished semaphore (Returned {})", result));
 		}
 
-		if (vkCreateFence(static_cast<VkDevice>(m_Device), &fenceCreateInfo, nullptr, &(bufferedFences[i])) != VK_SUCCESS)
+		result = vkCreateFence(static_cast<VkDevice>(m_Device), &fenceCreateInfo, nullptr, &(bufferedFences[i]));
+		if (result != VK_SUCCESS)
 		{
-			throw std::runtime_error("Failed to create fence");
+			throw std::runtime_error(fmt::format("Failed to create fence (Returned {})", result));
 		}
 	}
 
@@ -320,23 +325,15 @@ void glacier::Application::run()
 		vkWaitForFences(static_cast<VkDevice>(m_Device), 1, &(bufferedFences[currentFrame]), VK_TRUE, UINT64_MAX);
 
 		uint32_t imageIndex;
-		VkResult result = vkAcquireNextImageKHR(static_cast<VkDevice>(m_Device), static_cast<VkSwapchainKHR>(m_Renderer->m_Swapchain), UINT64_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
+		result = vkAcquireNextImageKHR(static_cast<VkDevice>(m_Device), static_cast<VkSwapchainKHR>(m_Renderer->m_Swapchain), UINT64_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
 
-		if (result == VK_SUCCESS)
+		if (result == VK_ERROR_OUT_OF_DATE_KHR || m_FramebufferResized)
 		{
-			suboptimal_flag = false;
-		}
-		else if (result == VK_SUBOPTIMAL_KHR)
-		{
-			if (!suboptimal_flag)
+			if (m_FramebufferResized)
 			{
-				g_Logger->warn("Swapchain is suboptimal.");
-				suboptimal_flag = true;
+				glacier::g_Logger->debug("Framebuffer was resized");
+				m_FramebufferResized = false;
 			}
-		}
-		else if (result == VK_ERROR_OUT_OF_DATE_KHR || m_FramebufferResized)
-		{
-			m_FramebufferResized = false;
 
 			/* Check if the window was minimized */
 			glm::uvec2 size = m_Window->getFramebufferSize();
@@ -367,23 +364,39 @@ void glacier::Application::run()
 			for (size_t i = 0; i < MAX_BUFFERED_FRAMES; i++)
 			{
 				vkDestroySemaphore(static_cast<VkDevice>(m_Device), imageAvailableSemaphores[i], nullptr);
-				if (vkCreateSemaphore(static_cast<VkDevice>(m_Device), &semaphoreCreateInfo, nullptr, &(imageAvailableSemaphores[i])) != VK_SUCCESS)
+
+				result = vkCreateSemaphore(static_cast<VkDevice>(m_Device), &semaphoreCreateInfo, nullptr, &(imageAvailableSemaphores[i]));
+				if (result != VK_SUCCESS)
 				{
-					throw std::runtime_error("Failed to create image available semaphore");
+					throw std::runtime_error(fmt::format("Failed to create image available semaphore (Returned {})", result));
 				}
 
 				vkDestroySemaphore(static_cast<VkDevice>(m_Device), renderFinishedSemaphores[i], nullptr);
-				if (vkCreateSemaphore(static_cast<VkDevice>(m_Device), &semaphoreCreateInfo, nullptr, &(renderFinishedSemaphores[i])) != VK_SUCCESS)
+
+				result = vkCreateSemaphore(static_cast<VkDevice>(m_Device), &semaphoreCreateInfo, nullptr, &(renderFinishedSemaphores[i]));
+				if (result != VK_SUCCESS)
 				{
-					throw std::runtime_error("Failed to create render finished semaphore");
+					throw std::runtime_error(fmt::format("Failed to create render finished semaphore (Returned {})", result));
 				}
 			}
 
 			continue;
 		}
-		else if (result != VK_SUCCESS)
+		else if (result == VK_SUBOPTIMAL_KHR)
 		{
-			throw std::runtime_error("Failed to acquire swapchain image");
+			if (!suboptimal_flag)
+			{
+				g_Logger->warn("Swapchain is suboptimal.");
+				suboptimal_flag = true;
+			}
+		}
+		else if (result == VK_SUCCESS)
+		{
+			suboptimal_flag = false;
+		}
+		else
+		{
+			throw std::runtime_error(fmt::format("Failed to acquire swapchain image (Returned {})", result));
 		}
 
 		if (bufferedImageFences[imageIndex] != VK_NULL_HANDLE)
@@ -393,7 +406,7 @@ void glacier::Application::run()
 
 		bufferedImageFences[imageIndex] = bufferedFences[currentFrame];
 
-		// Render the frame
+		// Render the frame <ERROR HERE>
 		render(m_Renderer);
 
 		VkSubmitInfo submitInfo = {};
@@ -417,9 +430,10 @@ void glacier::Application::run()
 		submitInfo.pSignalSemaphores = signalSemaphores;
 
 		vkResetFences(static_cast<VkDevice>(m_Device), 1, &(bufferedFences[currentFrame]));
-		if (vkQueueSubmit(static_cast<VkQueue>(m_Renderer->m_GraphicsQueue), 1, &submitInfo, bufferedFences[currentFrame]) != VK_SUCCESS)
+		result = vkQueueSubmit(static_cast<VkQueue>(m_Renderer->m_GraphicsQueue), 1, &submitInfo, bufferedFences[currentFrame]);
+		if (result != VK_SUCCESS)
 		{
-			throw std::runtime_error("Failed to submit draw command buffer");
+			throw std::runtime_error(fmt::format("Failed to submit draw command buffer (Returned {})", result));
 		}
 
 		VkPresentInfoKHR presentInfo = {};
@@ -432,7 +446,60 @@ void glacier::Application::run()
 		presentInfo.pSwapchains = swapchains; // TODO: &swapchain ?
 		presentInfo.pImageIndices = &imageIndex;
 
-		vkQueuePresentKHR(static_cast<VkQueue>(m_Renderer->m_PresentationQueue), &presentInfo);
+		result = vkQueuePresentKHR(static_cast<VkQueue>(m_Renderer->m_PresentationQueue), &presentInfo);
+		if (result == VK_ERROR_OUT_OF_DATE_KHR)
+		{
+			/* Check if the window was minimized */
+			glm::uvec2 size = m_Window->getFramebufferSize();
+			if (size.x == 0 || size.y == 0)
+			{
+				glacier::g_Logger->trace("Window is minimized");
+
+				while (size.x == 0 || size.y == 0)
+				{
+					size = m_Window->getFramebufferSize();
+					glfwWaitEvents();
+				}
+
+				glacier::g_Logger->trace("Window is no longer minimized");
+			}
+
+			/* Recreate the swapchain */
+			glacier::g_Logger->trace("Swapchain is outdated.");
+
+			terminateRenderer(m_Renderer);
+
+			delete m_Renderer;
+			m_Renderer = new Renderer(this);
+
+			initializeRenderer(m_Renderer);
+
+			/* Recreate semaphores */
+			for (size_t i = 0; i < MAX_BUFFERED_FRAMES; i++)
+			{
+				vkDestroySemaphore(static_cast<VkDevice>(m_Device), imageAvailableSemaphores[i], nullptr);
+
+				result = vkCreateSemaphore(static_cast<VkDevice>(m_Device), &semaphoreCreateInfo, nullptr, &(imageAvailableSemaphores[i]));
+				if (result != VK_SUCCESS)
+				{
+					throw std::runtime_error(fmt::format("Failed to create image available semaphore (Returned {})", result));
+				}
+
+				vkDestroySemaphore(static_cast<VkDevice>(m_Device), renderFinishedSemaphores[i], nullptr);
+
+				result = vkCreateSemaphore(static_cast<VkDevice>(m_Device), &semaphoreCreateInfo, nullptr, &(renderFinishedSemaphores[i]));
+				if (result != VK_SUCCESS)
+				{
+					throw std::runtime_error(fmt::format("Failed to create render finished semaphore (Returned {})", result));
+				}
+			}
+
+			continue;
+		}
+		else if (result != VK_SUCCESS)
+		{
+			throw std::runtime_error(fmt::format("Failed to present queue (Returned {})", result));
+		}
 
 		currentFrame = (currentFrame + 1) % MAX_BUFFERED_FRAMES;
 

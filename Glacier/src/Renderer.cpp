@@ -265,8 +265,6 @@ void createCommandPool(const VkDevice& device, const QueueFamilyIndices& queueFa
 // Create command buffers
 void createCommandBuffers(const VkDevice& device, const std::vector<VkFramebuffer>& framebuffers, const VkCommandPool& commandPool, std::vector<VkCommandBuffer>& commandBuffers)
 {
-	glacier::g_Logger->trace("Creating command buffers...");
-
 	commandBuffers.clear();
 	commandBuffers.resize(framebuffers.size());
 
@@ -288,12 +286,6 @@ void destroySwapchain(const VkDevice& device, std::vector<VkFramebuffer>& frameb
 	{
 		vkDestroyFramebuffer(device, framebuffers[i], nullptr);
 	}
-
-	// <free command buffers>
-
-	// <destroy pipeline>
-
-	// <destroy pipeline layout>
 
 	vkDestroyRenderPass(device, *renderPass, nullptr);
 	*renderPass = nullptr;
@@ -366,10 +358,6 @@ void glacier::Renderer::bindPipeline(const Pipeline& pipeline, uint32_t vertices
 			throw std::runtime_error("Failed to end command buffer");
 		}
 	}
-
-	//TODO Do shit with the command buffers
-
-	// Command buffers are bound, use them in Application.cpp and maybe check if they're bound. Don't clear after render. Unbind function
 }
 
 void glacier::Renderer::unbindPipeline()

@@ -15,5 +15,8 @@
 
 namespace glacier
 {
+	/**
+	 * @brief The global logger
+	*/
 	extern GLACIER_API std::shared_ptr<spdlog::logger> g_Logger;
 }

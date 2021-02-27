@@ -6,7 +6,6 @@
 
 int main(int argc, char** argv)
 {
-	/* Parse command-line arguments */
 	int resourceDirectoryArgumentIndex = -1;
 
 	for (unsigned int i = 1; i < argc; i++)
@@ -18,6 +17,7 @@ int main(int argc, char** argv)
 				i++;
 
 				glacier::File::setBaseDirectory(argv[i]);
+				resourceDirectoryArgumentIndex = i;
 
 				continue;
 			}
@@ -78,8 +78,6 @@ int main(int argc, char** argv)
 		}
 	}
 	/* ---------------------------- */
-
-	glacier::g_Logger->set_level(spdlog::level::debug);
 
 	if (resourceDirectoryArgumentIndex >= 0)
 		glacier::g_Logger->debug("Using resource directory {}", argv[resourceDirectoryArgumentIndex]);

@@ -14,6 +14,10 @@ namespace glacier
 	struct WindowCreateInfo
 	{
 		const char* title;
+		unsigned int minWidth = 0;
+		unsigned int minHeight = 0;
+		unsigned int maxWidth = 0;
+		unsigned int maxHeight = 0;
 		unsigned int width;
 		unsigned int height;
 		bool resizable;
@@ -60,6 +64,6 @@ namespace glacier
 
 		friend class Application;
 	private:
-		void* m_Window;
+		void* m_Handle;
 	};
 }

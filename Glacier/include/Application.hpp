@@ -6,10 +6,14 @@
 #include <spdlog/sinks/stdout_color_sinks.h>
 
 #include "Window.hpp"
-#include "PipelineInfo.hpp"
 
 namespace glacier
 {
+	class Renderer;
+
+	/**
+	 * @brief Information about how the application should be initialized.
+	*/
 	struct ApplicationInfo
 	{
 		const char* name;
@@ -23,38 +27,84 @@ namespace glacier
 		WindowCreateInfo windowInfo;
 	};
 
+	/**
+	 * @brief Main application class. All glacier applications extend this class.
+	*/
 	class Application
 	{
-	public:
+	protected:
+		/**
+		 * @brief Create a new application
+		 * @param info Information about how to initialize the application
+		*/
 		GLACIER_API Application(const ApplicationInfo& info);
-		GLACIER_API ~Application();
 
+		/**
+		 * @brief Destroy this application
+		*/
+		GLACIER_API ~Application();
+	public:
+		/**
+		 * @brief Run the main loop of this application.
+		*/
 		GLACIER_API void run();
+
+		/**
+		 * @brief Finish rendering the current frame, then stop the game loop.
+		*/
 		GLACIER_API void stop();
 
-		virtual void initialize(PipelineInfo& pipeline) {};
+		/**
+		 * @brief Initialize the application. Called before starting the main loop.
+		*/
+		virtual void initialize() {};
 
+		/**
+		 * @brief Initialize the renderer. Called when the renderer needs to be initialized.
+		 * @param renderer The new renderer
+		*/
+		virtual void initializeRenderer(Renderer* renderer) {};
+
+		/**
+		 * @brief Update the application. Called during the update stage of the main loop.
+		 * @param deltaTime The time since the last update
+		*/
 		virtual void update(double deltaTime) {}
-		virtual void render() {}
+
+		/**
+		 * @brief Render the application onto the window. Called during the render stage of the main loop.
+		*/
+		virtual void render(Renderer* renderer) {}
+
+		/**
+		 * @brief Terminate the renderer. Called when the renderer needs to be terminated.
+		 * @param renderer The renderer to be terminated.
+		*/
+		virtual void terminateRenderer(Renderer* renderer) {}
+
+		/**
+		 * @brief Terminate the application. Called when the main loop has finished.
+		*/
+		virtual void terminate() {}
 
 		friend class Shader;
 	private:
 		ApplicationInfo m_Info;
 		Window* m_Window;
+		Renderer* m_Renderer;
 
+		/* Guranteed to be assigned */
 		void* m_VulkanInstance;
 		void* m_DebugMessenger;
 		void* m_PhysicalDevice;
 		void* m_Device;
 		void* m_Surface;
-		//void* m_Swapchain;
-		//void* m_PipelineLayout;
-		//void* m_RenderPass;
-		//void* m_GraphicsPipeline;
 
-		//void* m_GraphicsQueue;
-		//void* m_PresentationQueue;
+		bool m_FramebufferResized;
 
-		//std::vector<void*> m_ImageViews;
+		friend class VertexBuffer;
+		friend class IndexBuffer;
+		friend class Renderer;
+		friend class Pipeline;
 	};
 }

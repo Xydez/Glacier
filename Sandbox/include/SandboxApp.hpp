@@ -24,7 +24,7 @@ private:
 	double timer = 0.0;
 public:
 	SandboxApp()
-		: Application(generateApplicationInfo()), m_Pipeline(nullptr), m_VertexShaderSource(nullptr), m_FragmentShaderSource(nullptr), m_VertexShader(nullptr), m_FragmentShader(nullptr), m_VertexBuffer(nullptr)
+		: Application(generateApplicationInfo()), m_Pipeline(nullptr), m_VertexShaderSource(nullptr), m_FragmentShaderSource(nullptr), m_VertexShader(nullptr), m_FragmentShader(nullptr), m_VertexBuffer(nullptr), m_IndexBuffer(nullptr)
 	{}
 
 	~SandboxApp()
@@ -38,17 +38,24 @@ public:
 
 	void initializeRenderer(glacier::Renderer* renderer) override
 	{
-		float buffer[]{
-			-0.5f,  0.5f, 0.0f,  1.0f, 0.0f, 0.0f,
-			 0.0f, -0.5f, 0.0f,  0.0f, 1.0f, 0.0f,
-			 0.5f,  0.5f, 0.0f,  0.0f, 0.0f, 1.0f
+		float vertexBuffer[]{
+			-0.5f, -0.5f, 0.0f,  0.0f, 1.0f, 1.0f,
+			 0.5f, -0.5f, 0.0f,  1.0f, 0.0f, 1.0f,
+			 0.5f,  0.5f, 0.0f,  1.0f, 1.0f, 0.0f,
+			-0.5f,  0.5f, 0.0f,  0.0f, 0.0f, 0.0f
+		};
+
+		unsigned int indexBuffer[]{
+			0, 1, 2,
+			0, 2, 3
 		};
 
 		glacier::VertexBufferLayout layout;
 		layout.push(glacier::VertexBufferElement::Float, 3);
 		layout.push(glacier::VertexBufferElement::Float, 3);
 
-		m_VertexBuffer = new glacier::VertexBuffer(this, buffer, sizeof(buffer), layout);
+		m_VertexBuffer = new glacier::VertexBuffer(this, vertexBuffer, sizeof(vertexBuffer), layout);
+		m_IndexBuffer = new glacier::IndexBuffer(this, indexBuffer, 6 * sizeof(unsigned int));
 
 		m_VertexShader = new glacier::Shader(this, *m_VertexShaderSource);
 		m_FragmentShader = new glacier::Shader(this, *m_FragmentShaderSource);
@@ -57,18 +64,14 @@ public:
 		shaders.insert(std::make_pair(glacier::ShaderType::Vertex, m_VertexShader));
 		shaders.insert(std::make_pair(glacier::ShaderType::Fragment, m_FragmentShader));
 
-		m_Pipeline = new glacier::Pipeline(this, renderer, shaders, *m_VertexBuffer);
+		m_Pipeline = new glacier::Pipeline(this, renderer, shaders, *m_VertexBuffer, *m_IndexBuffer);
 
-		renderer->bindPipeline(*m_Pipeline, 3);
+		renderer->bindPipeline(*m_Pipeline, 6);
 	}
 
 	void update(double delta) override {}
 
-	void render(glacier::Renderer* renderer) override
-	{
-		renderer->unbindPipeline();
-		renderer->bindPipeline(*m_Pipeline, 3);
-	}
+	void render(glacier::Renderer* renderer) override {}
 
 	void terminateRenderer(glacier::Renderer* renderer) override
 	{
@@ -78,6 +81,7 @@ public:
 		delete m_FragmentShader;
 
 		delete m_VertexBuffer;
+		delete m_IndexBuffer;
 
 		delete m_Pipeline;
 	}
@@ -95,6 +99,7 @@ private:
 	glacier::Shader* m_FragmentShader;
 
 	glacier::VertexBuffer* m_VertexBuffer;
+	glacier::IndexBuffer* m_IndexBuffer;
 
 	glacier::Pipeline* m_Pipeline;
 };

@@ -16,10 +16,9 @@ namespace glacier
 		/**
 		 * @brief Bind a graphics pipeline configuration to this renderer. There can only be one graphics pipeline bound at a time.
 		 * @param pipeline The pipeline to be bound.
-		 * @param vertices How many vertices there are in the vertex buffer of the pipeline.
-		 * @return 
+		 * @param count If the pipeline has an index buffer count is how many indices there are in the buffer. Otherwise count is how many vertices there are in the vertex buffer.
 		*/
-		GLACIER_API void bindPipeline(const Pipeline& pipeline, uint32_t vertices);
+		GLACIER_API void bindPipeline(const Pipeline& pipeline, uint32_t count);
 
 		/**
 		 * @brief Unbind the currently bound graphics pipeline configuration.
@@ -52,5 +51,6 @@ namespace glacier
 		friend class Application;
 		friend class Pipeline;
 		friend class VertexBuffer;
+		friend class IndexBuffer;
 	};
 }

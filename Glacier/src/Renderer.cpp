@@ -302,7 +302,7 @@ void destroySwapchain(const VkDevice& device, std::vector<VkFramebuffer>& frameb
 }
 /* ------------------ */
 
-void glacier::Renderer::bindPipeline(const Pipeline& pipeline, uint32_t vertices)
+void glacier::Renderer::bindPipeline(const Pipeline& pipeline, uint32_t count)
 {
 	/* Unbind old pipeline */
 	if (!m_CommandBuffers.empty())
@@ -347,9 +347,14 @@ void glacier::Renderer::bindPipeline(const Pipeline& pipeline, uint32_t vertices
 		VkBuffer vertexBuffers[] = { static_cast<VkBuffer>(pipeline.m_VertexBuffer->m_Handle) };
 		VkDeviceSize offsets[] = { 0 };
 		vkCmdBindVertexBuffers(static_cast<VkCommandBuffer>(m_CommandBuffers[i]), 0, 1, vertexBuffers, offsets);
+		if (pipeline.m_IndexBuffer)
+			vkCmdBindIndexBuffer(static_cast<VkCommandBuffer>(m_CommandBuffers[i]), static_cast<VkBuffer>(pipeline.m_IndexBuffer->m_Handle), 0, VK_INDEX_TYPE_UINT32);
 		// $ END $
 
-		vkCmdDraw(static_cast<VkCommandBuffer>(m_CommandBuffers[i]), vertices, 1, 0, 0);
+		if (pipeline.m_IndexBuffer)
+			vkCmdDrawIndexed(static_cast<VkCommandBuffer>(m_CommandBuffers[i]), count, 1, 0, 0, 0);
+		else
+			vkCmdDraw(static_cast<VkCommandBuffer>(m_CommandBuffers[i]), count, 1, 0, 0);
 
 		vkCmdEndRenderPass(static_cast<VkCommandBuffer>(m_CommandBuffers[i]));
 

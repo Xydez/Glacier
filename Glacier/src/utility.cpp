@@ -48,7 +48,7 @@ void createBuffer(const VkDevice& device, const VkPhysicalDevice& physicalDevice
 	vkBindBufferMemory(device, *buffer, *memory, 0);
 }
 
-void copyBuffers(const VkDevice& device, const VkCommandPool& commandPool, const VkQueue& graphicsQueue, VkBuffer* srcBuffers, VkBuffer* dstBuffers, VkDeviceSize* bufferSizes, unsigned int bufferCount)
+void copyBuffers(const VkDevice& device, const VkCommandPool& commandPool, const VkQueue& graphicsQueue, const VkBuffer* srcBuffers, const VkBuffer* dstBuffers, const VkDeviceSize* bufferSizes, unsigned int bufferCount)
 {
 	/* Create a temporary command buffer to copy the data */
 	VkCommandBufferAllocateInfo commandBufferAllocateInfo = {};

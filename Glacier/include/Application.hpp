@@ -103,6 +103,7 @@ namespace glacier
 		bool m_FramebufferResized;
 
 		friend class VertexBuffer;
+		friend class IndexBuffer;
 		friend class Renderer;
 		friend class Pipeline;
 	};

@@ -36,7 +36,7 @@ uint32_t findMemoryType(const VkPhysicalDevice& physicalDevice, uint32_t typeFil
 
 void createBuffer(const VkDevice& device, const VkPhysicalDevice& physicalDevice, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags flags, VkBuffer* buffer, VkDeviceMemory* memory);
 
-void copyBuffers(const VkDevice& device, const VkCommandPool& commandPool, const VkQueue& graphicsQueue, VkBuffer* srcBuffers, VkBuffer* dstBuffers, VkDeviceSize* bufferSizes, unsigned int bufferCount);
+void copyBuffers(const VkDevice& device, const VkCommandPool& commandPool, const VkQueue& graphicsQueue, const VkBuffer* srcBuffers, const VkBuffer* dstBuffers, const VkDeviceSize* bufferSizes, unsigned int bufferCount);
 
 QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device, VkSurfaceKHR surface);
 

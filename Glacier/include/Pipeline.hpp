@@ -3,6 +3,7 @@
 #include "common.hpp"
 #include "Shader.hpp"
 #include "VertexBuffer.hpp"
+#include "IndexBuffer.hpp"
 
 #include <unordered_map>
 
@@ -12,7 +13,7 @@ namespace glacier
 	class Renderer;
 
 	/**
-	 * @brief A graphics pipeline configuration. There needs to be a separate Pipeline instance for every pipeline configuration.
+	 * @brief A graphics pipeline configuration. There needs to be a separate Pipeline instance for every pipeline configuration. Must only be created in initializeRenderer
 	*/
 	class Pipeline
 	{
@@ -24,7 +25,7 @@ namespace glacier
 		 * @param shaders A map of the basic shader types and a pointer to their respective shaders. At least one ShaderType::Vertex and ShaderType::Fragment must be bound.
 		 * @param vertexBuffer A VertexBuffer corresponding to the current vertex input
 		*/
-		GLACIER_API Pipeline(const Application* application, const Renderer* renderer, const std::unordered_map<ShaderType, Shader*>& shaders, const VertexBuffer& vertexBuffer);
+		GLACIER_API Pipeline(const Application* application, const Renderer* renderer, const std::unordered_map<ShaderType, Shader*>& shaders, const VertexBuffer& vertexBuffer, const IndexBuffer& indexBuffer);
 
 		/**
 		 * @brief Destroy this graphics pipeline configuration
@@ -44,6 +45,7 @@ namespace glacier
 
 		const Application* m_Application;
 		const VertexBuffer* m_VertexBuffer;
+		const IndexBuffer* m_IndexBuffer;
 		const std::unordered_map<ShaderType, Shader*> m_Shaders;
 
 		friend class Renderer;

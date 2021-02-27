@@ -5,6 +5,7 @@ set(Headers
 	include/common.hpp
 	include/File.hpp
 	include/glacier.hpp
+	include/IndexBuffer.hpp
 	include/Pipeline.hpp
 	include/Renderer.hpp
 	include/Shader.hpp
@@ -17,6 +18,7 @@ set(Sources
 	src/Application.cpp
 	src/common.cpp
 	src/File.cpp
+	src/IndexBuffer.cpp
 	src/Pipeline.cpp
 	src/Renderer.cpp
 	src/Shader.cpp

@@ -6,8 +6,8 @@
 #include <spdlog/spdlog.h>
 #include <glm/glm.hpp>
 
-glacier::Pipeline::Pipeline(const glacier::Application* application, const glacier::Renderer* renderer, const std::unordered_map<ShaderType, Shader*>& shaders, const VertexBuffer& vertexBuffer)
-	: m_Application(application), m_VertexBuffer(&vertexBuffer), m_Shaders(shaders)
+glacier::Pipeline::Pipeline(const glacier::Application* application, const glacier::Renderer* renderer, const std::unordered_map<ShaderType, Shader*>& shaders, const VertexBuffer& vertexBuffer, const IndexBuffer& indexBuffer)
+	: m_Application(application), m_VertexBuffer(&vertexBuffer), m_IndexBuffer(&indexBuffer), m_Shaders(shaders)
 {
 	glacier::g_Logger->trace("Creating pipeline...");
 

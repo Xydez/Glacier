@@ -9,6 +9,7 @@
 namespace glacier
 {
 	class Application;
+	class Pipeline;
 
 	class Renderer
 	{

@@ -59,11 +59,12 @@ glacier::Pipeline::Pipeline(const glacier::Application* application, const glaci
 	// ->
 
 	vertexInputCreateInfo.vertexBindingDescriptionCount = 1;
-	vertexInputCreateInfo.pVertexBindingDescriptions = &(vertexBuffer.m_Layout.getBindingDescription());
+	VkVertexInputBindingDescription bindingDescription = vertexBuffer.m_Layout.getBindingDescription();
+	vertexInputCreateInfo.pVertexBindingDescriptions = &bindingDescription;
 	
-	std::vector<VkVertexInputAttributeDescription> descriptions = vertexBuffer.m_Layout.getAttributeDescriptions();
-	vertexInputCreateInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(descriptions.size());
-	vertexInputCreateInfo.pVertexAttributeDescriptions = descriptions.data();
+	std::vector<VkVertexInputAttributeDescription> attributeDescriptions = vertexBuffer.m_Layout.getAttributeDescriptions();
+	vertexInputCreateInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
+	vertexInputCreateInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
 
 	/*
 	 * float:	VK_FORMAT_R32_SFLOAT

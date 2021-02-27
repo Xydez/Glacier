@@ -1,2 +1,4 @@
 build/
+out/
 Sandbox/assets/shaders/*.spv
+.vs/

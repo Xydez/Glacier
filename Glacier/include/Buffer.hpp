@@ -1,6 +1,8 @@
 #pragma once
 
+#include <utility>
 #include <stdexcept>
+#include <cstring>
 
 namespace glacier
 {

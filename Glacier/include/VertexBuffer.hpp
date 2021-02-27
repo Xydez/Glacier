@@ -19,8 +19,8 @@ namespace glacier
 	class VertexBufferLayout
 	{
 	public:
-		GLACIER_API VertexBufferLayout() {}
-		GLACIER_API ~VertexBufferLayout() {}
+		VertexBufferLayout() {}
+		~VertexBufferLayout() {}
 
 		GLACIER_API void push(VertexBufferElement elementType, uint32_t count);
 	private:

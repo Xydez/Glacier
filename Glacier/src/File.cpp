@@ -33,3 +33,23 @@ glacier::Buffer glacier::File::read() const
 
 	return buffer;
 }
+
+GLACIER_API glacier::Buffer* glacier::File::read_ptr() const
+{
+	std::ifstream stream(m_Path.data(), std::ios::ate | std::ios::binary);
+
+	if (!stream)
+	{
+		throw std::runtime_error(fmt::format("Failed to read file {}", m_Path));
+	}
+
+	size_t size = stream.tellg();
+	stream.seekg(0);
+
+	Buffer* buffer = new Buffer(size);
+	stream.read(buffer->data(), size);
+
+	stream.close();
+
+	return buffer;
+}

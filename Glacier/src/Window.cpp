@@ -13,11 +13,11 @@ glacier::Window::Window(const WindowCreateInfo& info)
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 	glfwWindowHint(GLFW_RESIZABLE, info.resizable ? GLFW_TRUE : GLFW_FALSE);
 
-	m_Window = glfwCreateWindow(info.width, info.height, info.title, nullptr, nullptr);
-	if (m_Window == nullptr)
+	m_Handle = glfwCreateWindow(info.width, info.height, info.title, nullptr, nullptr);
+	if (m_Handle == nullptr)
 		throw std::runtime_error("Failed to create a window");
 
-	glfwSetWindowSizeLimits(static_cast<GLFWwindow*>(m_Window),
+	glfwSetWindowSizeLimits(static_cast<GLFWwindow*>(m_Handle),
 		info.minWidth == 0 ? GLFW_DONT_CARE : info.minWidth,
 		info.minHeight == 0 ? GLFW_DONT_CARE : info.minHeight,
 		info.maxWidth == 0 ? GLFW_DONT_CARE : info.maxWidth,
@@ -27,18 +27,18 @@ glacier::Window::Window(const WindowCreateInfo& info)
 
 glacier::Window::~Window()
 {
-	glfwDestroyWindow(static_cast<GLFWwindow*>(m_Window));
+	glfwDestroyWindow(static_cast<GLFWwindow*>(m_Handle));
 	glfwTerminate();
 }
 
 bool glacier::Window::isOpen() const
 {
-	return !glfwWindowShouldClose(static_cast<GLFWwindow*>(m_Window));
+	return !glfwWindowShouldClose(static_cast<GLFWwindow*>(m_Handle));
 }
 
 void glacier::Window::close()
 {
-	glfwSetWindowShouldClose(static_cast<GLFWwindow*>(m_Window), GLFW_TRUE);
+	glfwSetWindowShouldClose(static_cast<GLFWwindow*>(m_Handle), GLFW_TRUE);
 }
 
 glm::uvec2 glacier::Window::getSize() const
@@ -46,7 +46,7 @@ glm::uvec2 glacier::Window::getSize() const
 	int width;
 	int height;
 
-	glfwGetWindowSize(static_cast<GLFWwindow*>(m_Window), &width, &height);
+	glfwGetWindowSize(static_cast<GLFWwindow*>(m_Handle), &width, &height);
 
 	if (width == 0 || height == 0)
 		throw std::runtime_error("GLFW returned an invalid window size");
@@ -59,7 +59,7 @@ glm::uvec2 glacier::Window::getFramebufferSize() const
 	int width;
 	int height;
 
-	glfwGetFramebufferSize(static_cast<GLFWwindow*>(m_Window), &width, &height);
+	glfwGetFramebufferSize(static_cast<GLFWwindow*>(m_Handle), &width, &height);
 
 	if (width < 0 || height < 0)
 		throw std::runtime_error("GLFW returned an invalid framebuffer size");

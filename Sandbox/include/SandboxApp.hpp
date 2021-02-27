@@ -21,11 +21,20 @@ class SandboxApp : public glacier::Application
 {
 public:
 	SandboxApp()
-		: Application(generateApplicationInfo())
-	{
-		m_VertexShader = new glacier::Shader(*this, "shaders/vertex.spv", glacier::ShaderType::Vertex);
-		m_FragmentShader = new glacier::Shader(*this, "shaders/fragment.spv", glacier::ShaderType::Fragment);
+		: Application(generateApplicationInfo()), m_Pipeline(nullptr), m_VertexShaderSource(nullptr), m_FragmentShaderSource(nullptr), m_VertexShader(nullptr), m_FragmentShader(nullptr), m_VertexBuffer(nullptr)
+	{}
 
+	~SandboxApp()
+	{}
+
+	void initialize() override
+	{
+		m_VertexShaderSource = glacier::File("shaders/vertex.spv").read_ptr();
+		m_FragmentShaderSource = glacier::File("shaders/fragment.spv").read_ptr();
+	}
+
+	void initializeRenderer(glacier::Renderer* renderer) override
+	{
 		float buffer[]{
 			-0.5f,  0.5f, 0.0f,  1.0f, 0.0f, 0.0f,
 			 0.0f, -0.5f, 0.0f,  0.0f, 1.0f, 0.0f,
@@ -36,27 +45,54 @@ public:
 		layout.push(glacier::VertexBufferElement::Float, 3);
 		layout.push(glacier::VertexBufferElement::Float, 3);
 
-		m_VertexBuffer = new glacier::VertexBuffer(*this, buffer, sizeof(buffer), layout);
+		m_VertexBuffer = new glacier::VertexBuffer(this, buffer, sizeof(buffer), layout);
+
+		m_VertexShader = new glacier::Shader(this, *m_VertexShaderSource);
+		m_FragmentShader = new glacier::Shader(this, *m_FragmentShaderSource);
+
+		std::unordered_map<glacier::ShaderType, glacier::Shader*> shaders;
+		shaders.insert(std::make_pair(glacier::ShaderType::Vertex, m_VertexShader));
+		shaders.insert(std::make_pair(glacier::ShaderType::Fragment, m_FragmentShader));
+
+		m_Pipeline = new glacier::Pipeline(this, renderer, shaders, *m_VertexBuffer);
+
+		renderer->bindPipeline(*m_Pipeline, 3);
 	}
 
-	~SandboxApp()
+	void update(double delta) override
 	{
+
+	}
+
+	void render(glacier::Renderer* renderer) override
+	{
+	}
+
+	void terminateRenderer(glacier::Renderer* renderer) override
+	{
+		renderer->unbindPipeline();
+
 		delete m_VertexShader;
 		delete m_FragmentShader;
 
 		delete m_VertexBuffer;
+
+		delete m_Pipeline;
 	}
 
-	void initialize(glacier::PipelineInfo& pipeline) override
+	void terminate() override
 	{
-		pipeline.shaders.push_back(m_VertexShader);
-		pipeline.shaders.push_back(m_FragmentShader);
-
-		pipeline.vertexBuffer = m_VertexBuffer;
-		pipeline.vertexCount = 3;
+		delete m_VertexShaderSource;
+		delete m_FragmentShaderSource;
 	}
 private:
+	glacier::Buffer* m_VertexShaderSource;
+	glacier::Buffer* m_FragmentShaderSource;
+
 	glacier::Shader* m_VertexShader;
 	glacier::Shader* m_FragmentShader;
+
 	glacier::VertexBuffer* m_VertexBuffer;
+
+	glacier::Pipeline* m_Pipeline;
 };

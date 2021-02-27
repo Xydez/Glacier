@@ -64,6 +64,6 @@ namespace glacier
 
 		friend class Application;
 	private:
-		void* m_Window;
+		void* m_Handle;
 	};
 }

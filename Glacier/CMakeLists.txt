@@ -1,23 +1,28 @@
 # Glacier
 set(Headers
-	include/glacier.hpp
-	include/common.hpp
-	include/Window.hpp
 	include/Application.hpp
-	include/Shader.hpp
-	include/PipelineInfo.hpp
-	include/File.hpp
 	include/Buffer.hpp
+	include/common.hpp
+	include/File.hpp
+	include/glacier.hpp
+	include/Pipeline.hpp
+	include/Renderer.hpp
+	include/Shader.hpp
 	include/VertexBuffer.hpp
+	include/Window.hpp
+	include/internal/utility.hpp
 )
 
 set(Sources
-	src/common.cpp
-	src/Window.cpp
 	src/Application.cpp
-	src/Shader.cpp
+	src/common.cpp
 	src/File.cpp
+	src/Pipeline.cpp
+	src/Renderer.cpp
+	src/Shader.cpp
+	src/utility.cpp
 	src/VertexBuffer.cpp
+	src/Window.cpp
 )
 
 if(GLACIER_DYNAMIC_LINK)

@@ -11,7 +11,7 @@ namespace glacier
 		 * @brief Constructor
 		 * @param size Size in bytes of the buffer
 		*/
-		Buffer(size_t size)
+		inline Buffer(size_t size)
 			: m_Size(size)
 		{
 			m_Data = new char[size];
@@ -22,7 +22,7 @@ namespace glacier
 		 * @brief Copy constructor
 		 * @param buffer The buffer to copy
 		*/
-		Buffer(const Buffer& buffer)
+		inline Buffer(const Buffer& buffer)
 		{
 			m_Size = buffer.m_Size;
 			m_Data = new char[buffer.m_Size];
@@ -33,7 +33,7 @@ namespace glacier
 		 * @brief Move constructor
 		 * @param buffer The buffer to move
 		*/
-		Buffer(Buffer&& buffer) noexcept
+		inline Buffer(Buffer&& buffer) noexcept
 		{
 			m_Data = buffer.m_Data;
 			buffer.m_Data = nullptr;
@@ -42,7 +42,7 @@ namespace glacier
 			buffer.m_Size = 0;
 		}
 
-		~Buffer()
+		inline ~Buffer()
 		{
 			if (m_Data != nullptr)
 				delete[] m_Data;
@@ -53,7 +53,7 @@ namespace glacier
 		 * @param buffer The buffer to be copied into this buffer
 		 * @return This buffer
 		*/
-		Buffer& operator=(const Buffer& buffer)
+		inline Buffer& operator=(const Buffer& buffer)
 		{
 			if (this != &buffer)
 			{
@@ -70,18 +70,15 @@ namespace glacier
 		 * @param buffer The buffer to be moved into this buffer
 		 * @return This buffer
 		*/
-		Buffer& operator=(Buffer&& buffer) noexcept
+		inline Buffer& operator=(Buffer&& buffer) noexcept
 		{
 			if (this != &buffer)
 			{
 				if (m_Data != nullptr)
 					delete[] m_Data;
 				
-				m_Data = buffer.m_Data;
-				m_Size = buffer.m_Size;
-
-				buffer.m_Data = nullptr;
-				buffer.m_Size = 0;
+				m_Data = std::exchange(buffer.m_Data, nullptr);
+				m_Size = std::exchange(buffer.m_Size, 0);
 			}
 
 			return *this;

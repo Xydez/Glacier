@@ -1,5 +1,7 @@
 #include "VertexBuffer.hpp"
 #include "Application.hpp"
+#include "Renderer.hpp"
+#include "internal/utility.hpp"
 
 #include <stdexcept>
 #include <vector>
@@ -7,66 +9,40 @@
 
 // https://vulkan-tutorial.com/Vertex_buffers/Vertex_input_description
 
-uint32_t findMemoryType(const VkPhysicalDevice& physicalDevice, uint32_t typeFilter, VkMemoryPropertyFlags flags)
+glacier::VertexBuffer::VertexBuffer(const Application* application, const void* data, uint64_t size, const VertexBufferLayout& layout)
+	: m_Layout(layout), m_Application(application)
 {
-	VkPhysicalDeviceMemoryProperties memoryProperties;
-	vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memoryProperties);
+	VkBuffer stagingBuffer;
+	VkDeviceMemory stagingBufferMemory;
+	createBuffer(static_cast<VkDevice>(m_Application->m_Device), static_cast<VkPhysicalDevice>(m_Application->m_PhysicalDevice), size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &stagingBuffer, &stagingBufferMemory);
+	
+	// VK_BUFFER_USAGE_TRANSFER_SRC_BIT
+	// VK_BUFFER_USAGE_TRANSFER_DST_BIT
 
-	for (unsigned int i = 0; i < memoryProperties.memoryTypeCount; i++)
-	{
-		if (typeFilter & (1 << i) && (memoryProperties.memoryTypes[i].propertyFlags & flags) == flags)
-		{
-			return i;
-		}
-	}
-
-	throw std::runtime_error("Failed to find a suitable memory type");
-}
-
-glacier::VertexBuffer::VertexBuffer(const Application& application, const void* data, uint32_t size, const VertexBufferLayout& layout)
-	: m_Layout(layout), m_Application(&application)
-{
-	/* Create the buffer */
-	VkBufferCreateInfo bufferCreateInfo = {};
-	bufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-	bufferCreateInfo.size = size;
-	bufferCreateInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-	bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-	bufferCreateInfo.flags = 0;
-
-	if (vkCreateBuffer(static_cast<VkDevice>(m_Application->m_Device), &bufferCreateInfo, nullptr, reinterpret_cast<VkBuffer*>(&m_Handle)) != VK_SUCCESS)
-	{
-		throw std::runtime_error("Failed to create vertex buffer");
-	}
-
-	/* Allocate memory for the buffer */
-	VkMemoryRequirements memoryRequirements;
-	vkGetBufferMemoryRequirements(static_cast<VkDevice>(m_Application->m_Device), static_cast<VkBuffer>(m_Handle), &memoryRequirements);
-
-	VkMemoryAllocateInfo allocateInfo = {};
-	allocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-	allocateInfo.allocationSize = memoryRequirements.size;
-	allocateInfo.memoryTypeIndex = findMemoryType(static_cast<VkPhysicalDevice>(m_Application->m_PhysicalDevice), memoryRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-
-	if (vkAllocateMemory(static_cast<VkDevice>(m_Application->m_Device), &allocateInfo, nullptr, reinterpret_cast<VkDeviceMemory*>(&m_Memory)) != VK_SUCCESS)
-	{
-		throw std::runtime_error("Failed to allocate device memory for vertex buffer");
-	}
-
-	vkBindBufferMemory(static_cast<VkDevice>(m_Application->m_Device), static_cast<VkBuffer>(m_Handle), static_cast<VkDeviceMemory>(m_Memory), 0);
-
-	/* Copy data to the buffer */
+	/* Copy data to the staging buffer */
 	void* tmp;
-	vkMapMemory(static_cast<VkDevice>(m_Application->m_Device), static_cast<VkDeviceMemory>(m_Memory), 0, size, 0, &tmp);
+	vkMapMemory(static_cast<VkDevice>(m_Application->m_Device), stagingBufferMemory, 0, size, 0, &tmp);
 	memcpy(tmp, data, size);
-	vkUnmapMemory(static_cast<VkDevice>(m_Application->m_Device), static_cast<VkDeviceMemory>(m_Memory));
+	vkUnmapMemory(static_cast<VkDevice>(m_Application->m_Device), stagingBufferMemory);
+
+	/* Copy data from the staging buffer */
+	createBuffer(static_cast<VkDevice>(m_Application->m_Device), static_cast<VkPhysicalDevice>(m_Application->m_PhysicalDevice), size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, reinterpret_cast<VkBuffer*>(&m_Handle), reinterpret_cast<VkDeviceMemory*>(&m_Memory));
+
+	copyBuffers(static_cast<VkDevice>(m_Application->m_Device), static_cast<VkCommandPool>(m_Application->m_Renderer->m_CommandPool), static_cast<VkQueue>(m_Application->m_Renderer->m_GraphicsQueue), &stagingBuffer, reinterpret_cast<VkBuffer*>(&m_Handle), &size, 1);
+
+	vkDestroyBuffer(static_cast<VkDevice>(m_Application->m_Device), stagingBuffer, nullptr);
+	vkFreeMemory(static_cast<VkDevice>(m_Application->m_Device), stagingBufferMemory, nullptr);
 }
 
 glacier::VertexBuffer::~VertexBuffer()
 {
 	/* Destroy the buffer and free its memory */
-	vkDestroyBuffer(static_cast<VkDevice>(m_Application->m_Device), static_cast<VkBuffer>(m_Handle), nullptr);
-	vkFreeMemory(static_cast<VkDevice>(m_Application->m_Device), static_cast<VkDeviceMemory>(m_Memory), nullptr);
+
+	if (m_Handle)
+		vkDestroyBuffer(static_cast<VkDevice>(m_Application->m_Device), static_cast<VkBuffer>(m_Handle), nullptr);
+
+	if (m_Memory)
+		vkFreeMemory(static_cast<VkDevice>(m_Application->m_Device), static_cast<VkDeviceMemory>(m_Memory), nullptr);
 }
 
 void glacier::VertexBufferLayout::push(glacier::VertexBufferElement elementType, uint32_t count)
@@ -110,7 +86,7 @@ std::vector<VkVertexInputAttributeDescription> glacier::VertexBufferLayout::getA
 
 	unsigned int i = 0;
 	unsigned int offset = 0;
-	for (const std::pair<glacier::VertexBufferElement, size_t>& pair : m_Elements)
+	for (const std::pair<glacier::VertexBufferElement, uint32_t>& pair : m_Elements)
 	{
 		VkVertexInputAttributeDescription description = {};
 		description.binding = 0; // TODO

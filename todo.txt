@@ -1,3 +1,5 @@
 TODO:
-	In glacier::Renderer::bindPipeline(const Pipeline&, uint32_t)
-	- Move vertices to glacier::Pipeline
+* In glacier::Renderer::bindPipeline(const Pipeline&, uint32_t)
+  - Move vertices to glacier::Pipeline
+* Uniform buffers (https://vulkan-tutorial.com/Uniform_buffers/Descriptor_layout_and_buffer)
+* Textures (https://vulkan-tutorial.com/Texture_mapping/Images)

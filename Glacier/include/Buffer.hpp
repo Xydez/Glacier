@@ -6,11 +6,14 @@
 
 namespace glacier
 {
+	/**
+	 * @brief %Buffer for storing and transporting data more easily.
+	*/
 	class Buffer
 	{
 	public:
 		/**
-		 * @brief Constructor
+		 * @brief Create a new buffer.
 		 * @param size Size in bytes of the buffer
 		*/
 		inline Buffer(size_t size)
@@ -21,7 +24,7 @@ namespace glacier
 		}
 
 		/**
-		 * @brief Copy constructor
+		 * @brief Create a new buffer and copy the data from another buffer.
 		 * @param buffer The buffer to copy
 		*/
 		inline Buffer(const Buffer& buffer)
@@ -32,7 +35,7 @@ namespace glacier
 		}
 
 		/**
-		 * @brief Move constructor
+		 * @brief Move another buffer into this buffer.
 		 * @param buffer The buffer to move
 		*/
 		inline Buffer(Buffer&& buffer) noexcept
@@ -44,6 +47,9 @@ namespace glacier
 			buffer.m_Size = 0;
 		}
 
+		/**
+		 * @brief Destroy this buffer
+		*/
 		inline ~Buffer()
 		{
 			if (m_Data != nullptr)
@@ -51,9 +57,8 @@ namespace glacier
 		}
 
 		/**
-		 * @brief Copy operator
-		 * @param buffer The buffer to be copied into this buffer
-		 * @return This buffer
+		 * @brief Copy another buffer into this buffer.
+		 * @param buffer The buffer to be copied
 		*/
 		inline Buffer& operator=(const Buffer& buffer)
 		{
@@ -70,7 +75,6 @@ namespace glacier
 		/**
 		 * @brief Move operator
 		 * @param buffer The buffer to be moved into this buffer
-		 * @return This buffer
 		*/
 		inline Buffer& operator=(Buffer&& buffer) noexcept
 		{

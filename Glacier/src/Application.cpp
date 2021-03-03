@@ -13,8 +13,6 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
-constexpr unsigned int MAX_BUFFERED_FRAMES = 2;
-
 static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT severity, VkDebugUtilsMessageTypeFlagsEXT type, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData)
 {
 	spdlog::level::level_enum level;
@@ -85,6 +83,8 @@ bool isDeviceSuitable(VkPhysicalDevice device, VkSurfaceKHR surface)
 glacier::Application::Application(const ApplicationInfo& info)
 	: m_Info(info), m_FramebufferResized(false), m_Renderer(nullptr)
 {
+	VkResult result;
+
 	g_Logger->info("Initializing application...");
 
 	g_Logger->debug("Creating window...");
@@ -140,23 +140,26 @@ glacier::Application::Application(const ApplicationInfo& info)
 	instanceCreateInfo.pNext = &debugMessengerCreateInfo;
 #endif
 
-	if (vkCreateInstance(&instanceCreateInfo, nullptr, reinterpret_cast<VkInstance*>(&m_VulkanInstance)) != VK_SUCCESS)
+	result = vkCreateInstance(&instanceCreateInfo, nullptr, reinterpret_cast<VkInstance*>(&m_VulkanInstance));
+	if (result != VK_SUCCESS)
 	{
-		throw std::runtime_error("Failed to create Vulkan instance");
+		throw std::runtime_error(fmt::format("Failed to create Vulkan instance (Returned {})", result));
 	}
 
 #ifndef NDEBUG
-	if (vkCreateDebugUtilsMessengerEXT(static_cast<VkInstance>(m_VulkanInstance), &debugMessengerCreateInfo, nullptr, reinterpret_cast<VkDebugUtilsMessengerEXT*>(&m_DebugMessenger)) != VK_SUCCESS)
+	result = vkCreateDebugUtilsMessengerEXT(static_cast<VkInstance>(m_VulkanInstance), &debugMessengerCreateInfo, nullptr, reinterpret_cast<VkDebugUtilsMessengerEXT*>(&m_DebugMessenger));
+	if (result != VK_SUCCESS)
 	{
-		throw std::runtime_error("Failed to create Vulkan debug messenger");
+		throw std::runtime_error(fmt::format("Failed to create Vulkan debug messenger (Returned {})", result));
 	}
 #endif
 
 	/* Create a window surface */
 	g_Logger->debug("Creating window surface...");
-	if (glfwCreateWindowSurface(static_cast<VkInstance>(m_VulkanInstance), static_cast<GLFWwindow*>(m_Window->m_Handle), nullptr, reinterpret_cast<VkSurfaceKHR*>(&m_Surface)) != VK_SUCCESS)
+	result = glfwCreateWindowSurface(static_cast<VkInstance>(m_VulkanInstance), static_cast<GLFWwindow*>(m_Window->m_Handle), nullptr, reinterpret_cast<VkSurfaceKHR*>(&m_Surface));
+	if (result != VK_SUCCESS)
 	{
-		throw std::runtime_error("Failed to create window surface");
+		throw std::runtime_error(fmt::format("Failed to create window surface (Returned {})", result));
 	}
 
 	/* Pick a GPU */
@@ -232,9 +235,29 @@ glacier::Application::Application(const ApplicationInfo& info)
 	deviceCreateInfo.ppEnabledExtensionNames = deviceExtensions.data();
 	deviceCreateInfo.enabledExtensionCount = static_cast<uint32_t>(deviceExtensions.size());
 
-	if (vkCreateDevice(static_cast<VkPhysicalDevice>(m_PhysicalDevice), &deviceCreateInfo, nullptr, reinterpret_cast<VkDevice*>(&m_Device)) != VK_SUCCESS)
+	result = vkCreateDevice(static_cast<VkPhysicalDevice>(m_PhysicalDevice), &deviceCreateInfo, nullptr, reinterpret_cast<VkDevice*>(&m_Device));
+	if (result != VK_SUCCESS)
 	{
-		throw std::runtime_error("Failed to create logical device");
+		throw std::runtime_error(fmt::format("Failed to create logical device (Returned {})", result));
+	}
+
+	/* Create uniform buffer layout */
+	VkDescriptorSetLayoutBinding layoutBinding;
+	layoutBinding.binding = 0;
+	layoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	layoutBinding.descriptorCount = 1;
+	layoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT; // TODO: Maybe we need to know this?
+	layoutBinding.pImmutableSamplers = nullptr;
+
+	VkDescriptorSetLayoutCreateInfo layoutCreateInfo = {};
+	layoutCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+	layoutCreateInfo.bindingCount = 1;
+	layoutCreateInfo.pBindings = &layoutBinding;
+
+	result = vkCreateDescriptorSetLayout(static_cast<VkDevice>(m_Device), &layoutCreateInfo, nullptr, reinterpret_cast<VkDescriptorSetLayout*>(&m_UniformBufferLayout));
+	if (result != VK_SUCCESS)
+	{
+		throw std::runtime_error(fmt::format("Failed to create uniform buffer layout descriptor (Returned {})", result));
 	}
 
 	g_Logger->info("Application initialized.");
@@ -243,6 +266,8 @@ glacier::Application::Application(const ApplicationInfo& info)
 glacier::Application::~Application()
 {
 	g_Logger->info("Terminating application...");
+
+	vkDestroyDescriptorSetLayout(static_cast<VkDevice>(m_Device), static_cast<VkDescriptorSetLayout>(m_UniformBufferLayout), nullptr);
 
 	vkDestroyDevice(static_cast<VkDevice>(m_Device), nullptr);
 	vkDestroySurfaceKHR(static_cast<VkInstance>(m_VulkanInstance), static_cast<VkSurfaceKHR>(m_Surface), nullptr);
@@ -265,10 +290,12 @@ void glacier::Application::run()
 	m_Renderer = new Renderer(this);
 	initializeRenderer(m_Renderer);
 
+	unsigned int bufferedFrameCount = m_Renderer->m_Images.size();
+
 	/* Create semaphores */
-	std::vector<VkSemaphore> imageAvailableSemaphores(MAX_BUFFERED_FRAMES);
-	std::vector<VkSemaphore> renderFinishedSemaphores(MAX_BUFFERED_FRAMES);
-	std::vector<VkFence> bufferedFences(MAX_BUFFERED_FRAMES);
+	std::vector<VkSemaphore> imageAvailableSemaphores(bufferedFrameCount);
+	std::vector<VkSemaphore> renderFinishedSemaphores(bufferedFrameCount);
+	std::vector<VkFence> bufferedFences(bufferedFrameCount);
 	std::vector<VkFence> bufferedImageFences(m_Renderer->m_Images.size(), VK_NULL_HANDLE);
 
 	VkSemaphoreCreateInfo semaphoreCreateInfo = {};
@@ -278,7 +305,7 @@ void glacier::Application::run()
 	fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 	fenceCreateInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
-	for (size_t i = 0; i < MAX_BUFFERED_FRAMES; i++)
+	for (size_t i = 0; i < bufferedFrameCount; i++)
 	{
 		result = vkCreateSemaphore(static_cast<VkDevice>(m_Device), &semaphoreCreateInfo, nullptr, &(imageAvailableSemaphores[i]));
 		if (result != VK_SUCCESS)
@@ -302,7 +329,6 @@ void glacier::Application::run()
 	/* Start game loop */
 	g_Logger->debug("Starting game loop...");
 
-	size_t currentFrame = 0;
 	bool suboptimal_flag = false;
 
 	glfwSetWindowUserPointer(static_cast<GLFWwindow*>(m_Window->m_Handle), &m_FramebufferResized);
@@ -322,10 +348,10 @@ void glacier::Application::run()
 
 		/* Draw frame */
 		// Wait until the next frame should be drawn
-		vkWaitForFences(static_cast<VkDevice>(m_Device), 1, &(bufferedFences[currentFrame]), VK_TRUE, UINT64_MAX);
+		vkWaitForFences(static_cast<VkDevice>(m_Device), 1, &(bufferedFences[m_CurrentFrame]), VK_TRUE, UINT64_MAX);
 
 		uint32_t imageIndex;
-		result = vkAcquireNextImageKHR(static_cast<VkDevice>(m_Device), static_cast<VkSwapchainKHR>(m_Renderer->m_Swapchain), UINT64_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
+		result = vkAcquireNextImageKHR(static_cast<VkDevice>(m_Device), static_cast<VkSwapchainKHR>(m_Renderer->m_Swapchain), UINT64_MAX, imageAvailableSemaphores[m_CurrentFrame], VK_NULL_HANDLE, &imageIndex);
 
 		if (result == VK_ERROR_OUT_OF_DATE_KHR || m_FramebufferResized)
 		{
@@ -361,7 +387,7 @@ void glacier::Application::run()
 			initializeRenderer(m_Renderer);
 
 			/* Recreate semaphores */
-			for (size_t i = 0; i < MAX_BUFFERED_FRAMES; i++)
+			for (size_t i = 0; i < bufferedFrameCount; i++)
 			{
 				vkDestroySemaphore(static_cast<VkDevice>(m_Device), imageAvailableSemaphores[i], nullptr);
 
@@ -404,7 +430,7 @@ void glacier::Application::run()
 			vkWaitForFences(static_cast<VkDevice>(m_Device), 1, &(bufferedImageFences[imageIndex]), VK_TRUE, UINT64_MAX);
 		}
 
-		bufferedImageFences[imageIndex] = bufferedFences[currentFrame];
+		bufferedImageFences[imageIndex] = bufferedFences[m_CurrentFrame];
 
 		// Render the frame <ERROR HERE>
 		render(m_Renderer);
@@ -412,7 +438,7 @@ void glacier::Application::run()
 		VkSubmitInfo submitInfo = {};
 		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
-		VkSemaphore waitSemaphores[] = { imageAvailableSemaphores[currentFrame] };
+		VkSemaphore waitSemaphores[] = { imageAvailableSemaphores[m_CurrentFrame] };
 		VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
 		submitInfo.waitSemaphoreCount = 1;
 		submitInfo.pWaitSemaphores = waitSemaphores;
@@ -425,12 +451,12 @@ void glacier::Application::run()
 		submitInfo.commandBufferCount = 1;
 		submitInfo.pCommandBuffers = reinterpret_cast<VkCommandBuffer*>(&m_Renderer->m_CommandBuffers[imageIndex]); //&commandBuffers[imageIndex];
 
-		VkSemaphore signalSemaphores[] = { renderFinishedSemaphores[currentFrame] };
+		VkSemaphore signalSemaphores[] = { renderFinishedSemaphores[m_CurrentFrame] };
 		submitInfo.signalSemaphoreCount = 1;
 		submitInfo.pSignalSemaphores = signalSemaphores;
 
-		vkResetFences(static_cast<VkDevice>(m_Device), 1, &(bufferedFences[currentFrame]));
-		result = vkQueueSubmit(static_cast<VkQueue>(m_Renderer->m_GraphicsQueue), 1, &submitInfo, bufferedFences[currentFrame]);
+		vkResetFences(static_cast<VkDevice>(m_Device), 1, &(bufferedFences[m_CurrentFrame]));
+		result = vkQueueSubmit(static_cast<VkQueue>(m_Renderer->m_GraphicsQueue), 1, &submitInfo, bufferedFences[m_CurrentFrame]);
 		if (result != VK_SUCCESS)
 		{
 			throw std::runtime_error(fmt::format("Failed to submit draw command buffer (Returned {})", result));
@@ -475,7 +501,7 @@ void glacier::Application::run()
 			initializeRenderer(m_Renderer);
 
 			/* Recreate semaphores */
-			for (size_t i = 0; i < MAX_BUFFERED_FRAMES; i++)
+			for (size_t i = 0; i < bufferedFrameCount; i++)
 			{
 				vkDestroySemaphore(static_cast<VkDevice>(m_Device), imageAvailableSemaphores[i], nullptr);
 
@@ -501,7 +527,7 @@ void glacier::Application::run()
 			throw std::runtime_error(fmt::format("Failed to present queue (Returned {})", result));
 		}
 
-		currentFrame = (currentFrame + 1) % MAX_BUFFERED_FRAMES;
+		m_CurrentFrame = (m_CurrentFrame + 1) % bufferedFrameCount;
 
 		glfwPollEvents();
 	}
@@ -515,7 +541,7 @@ void glacier::Application::run()
 	g_Logger->debug("Destroying renderer...");
 
 	// Destroy this shit last
-	for (size_t i = 0; i < MAX_BUFFERED_FRAMES; i++)
+	for (size_t i = 0; i < bufferedFrameCount; i++)
 	{
 		vkDestroySemaphore(static_cast<VkDevice>(m_Device), imageAvailableSemaphores[i], nullptr);
 		vkDestroySemaphore(static_cast<VkDevice>(m_Device), renderFinishedSemaphores[i], nullptr);

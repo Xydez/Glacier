@@ -43,7 +43,7 @@ glacier::VertexBuffer::~VertexBuffer()
 		vkFreeMemory(static_cast<VkDevice>(m_Application->m_Device), static_cast<VkDeviceMemory>(m_Memory), nullptr);
 }
 
-void glacier::VertexBufferLayout::push(glacier::VertexBufferElement elementType, uint32_t count)
+void glacier::VertexBufferLayout::push(glacier::BufferElement elementType, uint32_t count)
 {
 	m_Elements.push_back(std::make_pair(elementType, count));
 }
@@ -54,19 +54,19 @@ VkVertexInputBindingDescription glacier::VertexBufferLayout::getBindingDescripti
 	vertexInputBindingDescription.binding = 0;
 
 	unsigned int stride = 0;
-	for (const std::pair<glacier::VertexBufferElement, uint32_t>& pair : m_Elements)
+	for (const std::pair<glacier::BufferElement, uint32_t>& pair : m_Elements)
 	{
 		switch (pair.first)
 		{
-		case glacier::VertexBufferElement::Byte:
-		case glacier::VertexBufferElement::UnsignedByte:
+		case glacier::BufferElement::Byte:
+		case glacier::BufferElement::UnsignedByte:
 			stride += 1 * pair.second;
 			break;
-		case glacier::VertexBufferElement::Float:
+		case glacier::BufferElement::Float:
 			stride += 4 * pair.second;
 			break;
-		case glacier::VertexBufferElement::Int:
-		case glacier::VertexBufferElement::UnsignedInt:
+		case glacier::BufferElement::Int:
+		case glacier::BufferElement::UnsignedInt:
 			stride += 4 * pair.second;
 			break;
 		}
@@ -84,7 +84,7 @@ std::vector<VkVertexInputAttributeDescription> glacier::VertexBufferLayout::getA
 
 	unsigned int i = 0;
 	unsigned int offset = 0;
-	for (const std::pair<glacier::VertexBufferElement, uint32_t>& pair : m_Elements)
+	for (const std::pair<glacier::BufferElement, uint32_t>& pair : m_Elements)
 	{
 		VkVertexInputAttributeDescription description = {};
 		description.binding = 0; // TODO
@@ -97,7 +97,7 @@ std::vector<VkVertexInputAttributeDescription> glacier::VertexBufferLayout::getA
 
 		switch (pair.first)
 		{
-		case glacier::VertexBufferElement::Byte:
+		case glacier::BufferElement::Byte:
 			switch (pair.second)
 			{
 			case 1:
@@ -115,7 +115,7 @@ std::vector<VkVertexInputAttributeDescription> glacier::VertexBufferLayout::getA
 			}
 			offset += 1 * pair.second;
 			break;
-		case glacier::VertexBufferElement::UnsignedByte:
+		case glacier::BufferElement::UnsignedByte:
 			switch (pair.second)
 			{
 			case 1:
@@ -133,7 +133,7 @@ std::vector<VkVertexInputAttributeDescription> glacier::VertexBufferLayout::getA
 			}
 			offset += 1 * pair.second;
 			break;
-		case glacier::VertexBufferElement::Int:
+		case glacier::BufferElement::Int:
 			switch (pair.second)
 			{
 			case 1:
@@ -151,7 +151,7 @@ std::vector<VkVertexInputAttributeDescription> glacier::VertexBufferLayout::getA
 			}
 			offset += 4 * pair.second;
 			break;
-		case glacier::VertexBufferElement::UnsignedInt:
+		case glacier::BufferElement::UnsignedInt:
 			description.format = VK_FORMAT_R32_UINT;
 			switch (pair.second)
 			{
@@ -170,7 +170,7 @@ std::vector<VkVertexInputAttributeDescription> glacier::VertexBufferLayout::getA
 			}
 			offset += 4 * pair.second;
 			break;
-		case glacier::VertexBufferElement::Float:
+		case glacier::BufferElement::Float:
 			description.format = VK_FORMAT_R32_SFLOAT;
 			switch (pair.second)
 			{

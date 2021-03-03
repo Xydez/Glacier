@@ -302,7 +302,7 @@ void destroySwapchain(const VkDevice& device, std::vector<VkFramebuffer>& frameb
 }
 /* ------------------ */
 
-void glacier::Renderer::bindPipeline(const Pipeline& pipeline, uint32_t count)
+void glacier::Renderer::bindPipeline(const Pipeline& pipeline)
 {
 	/* Unbind old pipeline */
 	if (!m_CommandBuffers.empty())
@@ -313,6 +313,9 @@ void glacier::Renderer::bindPipeline(const Pipeline& pipeline, uint32_t count)
 	VkExtent2D extent = { size.x, size.y };
 
 	createCommandBuffers(static_cast<VkDevice>(m_Application->m_Device), reinterpret_cast<const std::vector<VkFramebuffer>&>(m_Framebuffers), static_cast<VkCommandPool>(m_CommandPool), reinterpret_cast<std::vector<VkCommandBuffer>&>(m_CommandBuffers));
+
+	/* Fill command buffers */
+	size_t count = pipeline.m_IndexBuffer->getCount();
 
 	for (size_t i = 0; i < m_CommandBuffers.size(); i++)
 	{
@@ -343,13 +346,16 @@ void glacier::Renderer::bindPipeline(const Pipeline& pipeline, uint32_t count)
 
 		vkCmdBindPipeline(static_cast<VkCommandBuffer>(m_CommandBuffers[i]), VK_PIPELINE_BIND_POINT_GRAPHICS, static_cast<VkPipeline>(pipeline.m_Pipeline));
 
-		// $ BEGIN $
 		VkBuffer vertexBuffers[] = { static_cast<VkBuffer>(pipeline.m_VertexBuffer->m_Handle) };
 		VkDeviceSize offsets[] = { 0 };
 		vkCmdBindVertexBuffers(static_cast<VkCommandBuffer>(m_CommandBuffers[i]), 0, 1, vertexBuffers, offsets);
 		if (pipeline.m_IndexBuffer)
 			vkCmdBindIndexBuffer(static_cast<VkCommandBuffer>(m_CommandBuffers[i]), static_cast<VkBuffer>(pipeline.m_IndexBuffer->m_Handle), 0, VK_INDEX_TYPE_UINT32);
-		// $ END $
+
+		if (pipeline.m_UniformBuffer.has_value())
+		{
+			vkCmdBindDescriptorSets(static_cast<VkCommandBuffer>(m_CommandBuffers[i]), VK_PIPELINE_BIND_POINT_GRAPHICS, static_cast<VkPipelineLayout>(pipeline.m_PipelineLayout), 0, 1, reinterpret_cast<VkDescriptorSet*>(&pipeline.m_UniformBuffer.value()->m_DescriptorSets[i]), 0, nullptr);
+		}
 
 		if (pipeline.m_IndexBuffer)
 			vkCmdDrawIndexed(static_cast<VkCommandBuffer>(m_CommandBuffers[i]), count, 1, 0, 0, 0);
@@ -406,6 +412,23 @@ glacier::Renderer::Renderer(Application* application)
 
 	createCommandPool(static_cast<VkDevice>(m_Application->m_Device), queueFamilyIndices, reinterpret_cast<VkCommandPool*>(&m_CommandPool));
 
+	/* Create descriptor pool */
+	VkDescriptorPoolSize descriptorPoolSize = {};
+	descriptorPoolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	descriptorPoolSize.descriptorCount = m_Images.size();
+
+	VkDescriptorPoolCreateInfo descriptorPoolCreateInfo = {};
+	descriptorPoolCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+	descriptorPoolCreateInfo.poolSizeCount = 1;
+	descriptorPoolCreateInfo.pPoolSizes = &descriptorPoolSize;
+	descriptorPoolCreateInfo.maxSets = m_Images.size();
+
+	VkResult result = vkCreateDescriptorPool(static_cast<VkDevice>(m_Application->m_Device), &descriptorPoolCreateInfo, nullptr, reinterpret_cast<VkDescriptorPool*>(&m_DescriptorPool));
+	if (result != VK_SUCCESS)
+	{
+		throw std::runtime_error(fmt::format("Failed to create descriptor pool (Returned {})", result));
+	}
+
 	/* Get queues */
 	vkGetDeviceQueue(static_cast<VkDevice>(m_Application->m_Device), queueFamilyIndices.graphicsFamily.value(), 0, reinterpret_cast<VkQueue*>(&m_GraphicsQueue));
 	vkGetDeviceQueue(static_cast<VkDevice>(m_Application->m_Device), queueFamilyIndices.presentationFamily.value(), 0, reinterpret_cast<VkQueue*>(&m_PresentationQueue));
@@ -424,4 +447,6 @@ glacier::Renderer::~Renderer()
 	destroySwapchain(static_cast<VkDevice>(m_Application->m_Device), *framebuffers, reinterpret_cast<VkRenderPass*>(&m_RenderPass), *imageViews, reinterpret_cast<VkSwapchainKHR*>(&m_Swapchain));
 
 	vkDestroyCommandPool(static_cast<VkDevice>(m_Application->m_Device), static_cast<VkCommandPool>(m_CommandPool), nullptr);
+
+	vkDestroyDescriptorPool(static_cast<VkDevice>(m_Application->m_Device), static_cast<VkDescriptorPool>(m_DescriptorPool), nullptr);
 }

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "common.hpp"
+#include "BufferElement.hpp"
 
 #include <vector>
 
@@ -11,20 +12,23 @@ namespace glacier
 {
 	class Application;
 
-	enum class VertexBufferElement
-	{
-		Float, Int, UnsignedInt, Byte, UnsignedByte
-	};
-
+	/**
+	 * @brief Class describing the layout of a vertex buffer.
+	*/
 	class VertexBufferLayout
 	{
 	public:
-		VertexBufferLayout() {}
-		~VertexBufferLayout() {}
+		//VertexBufferLayout() {}
+		//~VertexBufferLayout() {}
 
-		GLACIER_API void push(VertexBufferElement elementType, uint32_t count);
+		/**
+		 * @brief Push an element to the end of this layout.
+		 * @param elementType Primitive type of the element to be pushed.
+		 * @param count How many elements of type elementType to be pushed. Must be between 1 and 4.
+		*/
+		GLACIER_API void push(BufferElement elementType, uint32_t count);
 	private:
-		std::vector<std::pair<VertexBufferElement, uint32_t>> m_Elements;
+		std::vector<std::pair<BufferElement, uint32_t>> m_Elements;
 
 		VkVertexInputBindingDescription getBindingDescription() const;
 		std::vector<VkVertexInputAttributeDescription> getAttributeDescriptions() const;
@@ -45,8 +49,8 @@ namespace glacier
 		VertexBuffer& operator=(const VertexBuffer&) = delete;
 
 		// Delete move
-		VertexBuffer(VertexBuffer&& other) = delete;
-		VertexBuffer& operator=(VertexBuffer&& other) = delete;
+		VertexBuffer(VertexBuffer&&) = delete;
+		VertexBuffer& operator=(VertexBuffer&&) = delete;
 	private:
 		VertexBufferLayout m_Layout;
 

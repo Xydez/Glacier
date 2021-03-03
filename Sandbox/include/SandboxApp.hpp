@@ -2,6 +2,8 @@
 
 #include <glacier.hpp>
 
+constexpr float PI = 3.1415926535f;
+
 glacier::ApplicationInfo generateApplicationInfo()
 {
 	glacier::WindowCreateInfo windowInfo = { 0 };
@@ -17,6 +19,13 @@ glacier::ApplicationInfo generateApplicationInfo()
 	return info;
 }
 
+struct TestUniform
+{
+	float u_ModifierA;
+	float u_ModifierB;
+	float u_ModifierC;
+};
+
 class SandboxApp : public glacier::Application
 {
 private:
@@ -24,7 +33,7 @@ private:
 	double timer = 0.0;
 public:
 	SandboxApp()
-		: Application(generateApplicationInfo()), m_Pipeline(nullptr), m_VertexShaderSource(nullptr), m_FragmentShaderSource(nullptr), m_VertexShader(nullptr), m_FragmentShader(nullptr), m_VertexBuffer(nullptr), m_IndexBuffer(nullptr)
+		: Application(generateApplicationInfo()), m_Pipeline(nullptr), m_VertexShaderSource(nullptr), m_FragmentShaderSource(nullptr), m_VertexShader(nullptr), m_FragmentShader(nullptr), m_VertexBuffer(nullptr), m_IndexBuffer(nullptr), m_UniformBuffer(nullptr)
 	{}
 
 	~SandboxApp()
@@ -39,10 +48,10 @@ public:
 	void initializeRenderer(glacier::Renderer* renderer) override
 	{
 		float vertexBuffer[]{
-			-0.5f, -0.5f, 0.0f,  0.0f, 1.0f, 1.0f,
-			 0.5f, -0.5f, 0.0f,  1.0f, 0.0f, 1.0f,
-			 0.5f,  0.5f, 0.0f,  1.0f, 1.0f, 0.0f,
-			-0.5f,  0.5f, 0.0f,  0.0f, 0.0f, 0.0f
+			-1.0f, -1.0f, 0.0f,  1.0f, 0.0f, 0.0f,
+			 1.0f, -1.0f, 0.0f,  0.0f, 1.0f, 0.0f,
+			 1.0f,  1.0f, 0.0f,  0.0f, 0.0f, 1.0f,
+			-1.0f,  1.0f, 0.0f,  0.0f, 1.0f, 0.0f
 		};
 
 		unsigned int indexBuffer[]{
@@ -51,11 +60,11 @@ public:
 		};
 
 		glacier::VertexBufferLayout layout;
-		layout.push(glacier::VertexBufferElement::Float, 3);
-		layout.push(glacier::VertexBufferElement::Float, 3);
+		layout.push(glacier::BufferElement::Float, 3);
+		layout.push(glacier::BufferElement::Float, 3);
 
 		m_VertexBuffer = new glacier::VertexBuffer(this, vertexBuffer, sizeof(vertexBuffer), layout);
-		m_IndexBuffer = new glacier::IndexBuffer(this, indexBuffer, 6 * sizeof(unsigned int));
+		m_IndexBuffer = new glacier::IndexBuffer(this, indexBuffer, 6);
 
 		m_VertexShader = new glacier::Shader(this, *m_VertexShaderSource);
 		m_FragmentShader = new glacier::Shader(this, *m_FragmentShaderSource);
@@ -64,18 +73,32 @@ public:
 		shaders.insert(std::make_pair(glacier::ShaderType::Vertex, m_VertexShader));
 		shaders.insert(std::make_pair(glacier::ShaderType::Fragment, m_FragmentShader));
 
-		m_Pipeline = new glacier::Pipeline(this, renderer, shaders, *m_VertexBuffer, *m_IndexBuffer);
+		m_UniformBuffer = new glacier::UniformBuffer(this, sizeof(TestUniform));
 
-		renderer->bindPipeline(*m_Pipeline, 6);
+		m_Pipeline = new glacier::Pipeline(this, renderer, shaders, m_UniformBuffer, m_VertexBuffer, m_IndexBuffer);
+
+		renderer->bindPipeline(*m_Pipeline);
 	}
 
-	void update(double delta) override {}
+	void update(double delta) override
+	{
+		m_Timer += delta;
+
+		TestUniform uniform = {
+			(cos(m_Timer) + 1.0f) / 2.0f,
+			(cos(m_Timer + 2.0f * PI / 3.0f) / 2.0f),
+			(cos(m_Timer + 4.0f * PI / 3.0f) / 2.0f)
+		};
+		m_UniformBuffer->update(&uniform);
+	}
 
 	void render(glacier::Renderer* renderer) override {}
 
 	void terminateRenderer(glacier::Renderer* renderer) override
 	{
 		renderer->unbindPipeline();
+
+		delete m_UniformBuffer;
 
 		delete m_VertexShader;
 		delete m_FragmentShader;
@@ -98,8 +121,12 @@ private:
 	glacier::Shader* m_VertexShader;
 	glacier::Shader* m_FragmentShader;
 
+	glacier::UniformBuffer* m_UniformBuffer;
+
 	glacier::VertexBuffer* m_VertexBuffer;
 	glacier::IndexBuffer* m_IndexBuffer;
 
 	glacier::Pipeline* m_Pipeline;
+
+	double m_Timer = 0.0;
 };

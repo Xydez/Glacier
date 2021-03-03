@@ -6,8 +6,8 @@
 #include <spdlog/spdlog.h>
 #include <glm/glm.hpp>
 
-glacier::Pipeline::Pipeline(const glacier::Application* application, const glacier::Renderer* renderer, const std::unordered_map<ShaderType, Shader*>& shaders, const VertexBuffer& vertexBuffer, const IndexBuffer& indexBuffer)
-	: m_Application(application), m_VertexBuffer(&vertexBuffer), m_IndexBuffer(&indexBuffer), m_Shaders(shaders)
+glacier::Pipeline::Pipeline(const glacier::Application* application, const glacier::Renderer* renderer, const std::unordered_map<ShaderType, Shader*>& shaders, const std::optional<UniformBuffer*>& uniformBuffer, const VertexBuffer* vertexBuffer, const IndexBuffer* indexBuffer)
+	: m_Application(application), m_VertexBuffer(vertexBuffer), m_IndexBuffer(indexBuffer), m_Shaders(shaders), m_UniformBuffer(uniformBuffer)
 {
 	glacier::g_Logger->trace("Creating pipeline...");
 
@@ -59,10 +59,10 @@ glacier::Pipeline::Pipeline(const glacier::Application* application, const glaci
 	// ->
 
 	vertexInputCreateInfo.vertexBindingDescriptionCount = 1;
-	VkVertexInputBindingDescription bindingDescription = vertexBuffer.m_Layout.getBindingDescription();
+	VkVertexInputBindingDescription bindingDescription = vertexBuffer->m_Layout.getBindingDescription();
 	vertexInputCreateInfo.pVertexBindingDescriptions = &bindingDescription;
 	
-	std::vector<VkVertexInputAttributeDescription> attributeDescriptions = vertexBuffer.m_Layout.getAttributeDescriptions();
+	std::vector<VkVertexInputAttributeDescription> attributeDescriptions = vertexBuffer->m_Layout.getAttributeDescriptions();
 	vertexInputCreateInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
 	vertexInputCreateInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
 
@@ -104,8 +104,8 @@ glacier::Pipeline::Pipeline(const glacier::Application* application, const glaci
 
 	// Disable face culling
 	rasterizerCreateInfo.cullMode = VK_CULL_MODE_NONE; // VK_CULL_MODE_BACK_BIT
-
 	rasterizerCreateInfo.frontFace = VK_FRONT_FACE_CLOCKWISE;
+
 	rasterizerCreateInfo.depthBiasEnable = VK_FALSE;
 	rasterizerCreateInfo.depthBiasConstantFactor = 0.0f;
 	rasterizerCreateInfo.depthBiasClamp = 0.0f;
@@ -142,8 +142,8 @@ glacier::Pipeline::Pipeline(const glacier::Application* application, const glaci
 
 	VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo = {};
 	pipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-	pipelineLayoutCreateInfo.setLayoutCount = 0;
-	pipelineLayoutCreateInfo.pSetLayouts = nullptr;
+	pipelineLayoutCreateInfo.setLayoutCount = 1;
+	pipelineLayoutCreateInfo.pSetLayouts = reinterpret_cast<const VkDescriptorSetLayout*>(&m_Application->m_UniformBufferLayout);
 	pipelineLayoutCreateInfo.pushConstantRangeCount = 0;
 	pipelineLayoutCreateInfo.pPushConstantRanges = nullptr;
 
@@ -187,9 +187,6 @@ glacier::Pipeline::Pipeline(const glacier::Application* application, const glaci
 
 glacier::Pipeline::~Pipeline()
 {
-	if (m_Pipeline)
-		vkDestroyPipeline(static_cast<VkDevice>(m_Application->m_Device), static_cast<VkPipeline>(m_Pipeline), nullptr);
-
-	if (m_PipelineLayout)
-		vkDestroyPipelineLayout(static_cast<VkDevice>(m_Application->m_Device), static_cast<VkPipelineLayout>(m_PipelineLayout), nullptr);
+	vkDestroyPipeline(static_cast<VkDevice>(m_Application->m_Device), static_cast<VkPipeline>(m_Pipeline), nullptr);
+	vkDestroyPipelineLayout(static_cast<VkDevice>(m_Application->m_Device), static_cast<VkPipelineLayout>(m_PipelineLayout), nullptr);
 }

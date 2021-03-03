@@ -1,5 +1,86 @@
+/*
+
 TODO:
-* In glacier::Renderer::bindPipeline(const Pipeline&, uint32_t)
-  - Move vertices to glacier::Pipeline
 * Uniform buffers (https://vulkan-tutorial.com/Uniform_buffers/Descriptor_layout_and_buffer)
+  - Descriptor pools and sets (https://vulkan-tutorial.com/en/Uniform_buffers/Descriptor_pool_and_sets)
+* LifecycleObject
+  - Every vulkan object extends LifecycleObject
+  - See code block 1
 * Textures (https://vulkan-tutorial.com/Texture_mapping/Images)
+* F11 Fullscreen keybind
+
+*/
+
+
+/*=== Code block 1 ===*/
+
+/* SandboxApp.hpp */
+
+public:
+	void initialize(Renderer& renderer)
+	{
+		float data[]
+		{
+			-0.5f, -0.5f, 0.0f,
+			0.5f, -0.5f, 0.0f,
+			0.0f,  0.5f, 0.0f
+		};
+		
+		VertexBufferLayout layout;
+		layout.push<float>(3);
+		
+		m_VertexBuffer = new VertexBuffer(data, 9 * sizeof(float), layout);
+		
+		renderer.add(m_VertexBuffer);
+	}
+	
+	void update(double deltaTime) {}
+	
+	void render(Renderer& renderer)
+	{
+		m_VertexBuffer.bind();
+	}
+	
+	void terminate(Renderer& renderer)
+	{
+		renderer.remove(m_VertexBuffer);
+		
+		delete m_VertexBuffer;
+	}
+private:
+	VertexBuffer* m_VertexBuffer;
+	
+/* Renderer.hpp */
+
+/*
+Object state is managed through the constructor.
+create() and destroy() only recreate the Vulkan object.
+*/
+
+private:
+	Renderer()
+	{
+		create();
+	}
+	
+	~Renderer()
+	{
+		destroy();
+	}
+
+	const std::vector<LifecycleObject> m_Objects;
+	
+	void create()
+	{
+		for (LifecycleObject& obj : m_Objects)
+			obj.create();
+	}
+	
+	void destroy()
+	{
+		for (LifecycleObject& obj : m_Objects)
+			obj.destroy();
+	}
+
+
+/*====================*/

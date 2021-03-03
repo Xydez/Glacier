@@ -9,7 +9,7 @@
 namespace glacier
 {
 	/**
-	 * Struct containing info about the window to be created
+	 * @brief Struct containing info about the window to be created
 	 */
 	struct WindowCreateInfo
 	{
@@ -23,20 +23,12 @@ namespace glacier
 		bool resizable;
 	};
 
+	/**
+	 * @brief Class representing a window.
+	*/
 	class Window
 	{
 	public:
-		GLACIER_API Window(const WindowCreateInfo& info);
-		GLACIER_API ~Window();
-
-		// Delete copy
-		Window(const Window&) = delete;
-		Window& operator=(const Window&) = delete;
-
-		// Delete move
-		Window(Window&&) = delete;
-		Window& operator=(Window&&) = delete;
-
 		/**
 		 * Get if the window is open
 		 * @return True if the window is open, otherwise false
@@ -61,9 +53,20 @@ namespace glacier
 		 * @return An unsigned vector containing the size of the window.
 		 */
 		GLACIER_API glm::uvec2 getFramebufferSize() const;
+	private:
+		GLACIER_API Window(const WindowCreateInfo& info);
+		GLACIER_API ~Window();
+
+		// Delete copy
+		Window(const Window&) = delete;
+		Window& operator=(const Window&) = delete;
+
+		// Delete move
+		Window(Window&&) = delete;
+		Window& operator=(Window&&) = delete;
+
+		void* m_Handle;
 
 		friend class Application;
-	private:
-		void* m_Handle;
 	};
 }

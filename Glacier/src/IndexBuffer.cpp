@@ -6,9 +6,11 @@
 #include <stdexcept>
 #include <vulkan/vulkan.h>
 
-glacier::IndexBuffer::IndexBuffer(const Application* application, const uint32_t* data, uint64_t size)
-	: m_Application(application)
+glacier::IndexBuffer::IndexBuffer(const Application* application, const uint32_t* data, size_t count)
+	: m_Application(application), m_Count(count)
 {
+	size_t size = m_Count * sizeof(uint32_t);
+
 	/* Create a staging buffer */
 	VkBuffer stagingBuffer;
 	VkDeviceMemory stagingBufferMemory;

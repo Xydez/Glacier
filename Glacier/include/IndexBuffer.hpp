@@ -6,10 +6,26 @@ namespace glacier
 {
 	class Application;
 
+	/**
+	 * @brief %Buffer containing the indices of the vertices that should be rendered.
+	 * @warning Must only be created in Application::initializeRenderer()
+	*/
 	class IndexBuffer
 	{
 	public:
-		GLACIER_API IndexBuffer(const Application* application, const uint32_t* data, uint64_t size);
+		/**
+		 * @brief Create a new index buffer and copy data into it.
+		 * @param application The currently running application.
+		 * @param data Pointer to the indices to be copied
+		 * @param count Count of indices to be copied
+		 * @warning Must only be called in Application::initializeRenderer()
+		*/
+		GLACIER_API IndexBuffer(const Application* application, const uint32_t* data, size_t count);
+
+		/**
+		 * @brief Destroy this index buffer.
+		 * @warning Must only be called in Application::terminateRenderer()
+		*/
 		GLACIER_API ~IndexBuffer();
 
 		// Delete copy
@@ -17,13 +33,20 @@ namespace glacier
 		IndexBuffer& operator=(const IndexBuffer&) = delete;
 
 		// Delete move
-		IndexBuffer(IndexBuffer&& other) = delete;
-		IndexBuffer& operator=(IndexBuffer&& other) = delete;
+		IndexBuffer(IndexBuffer&&) = delete;
+		IndexBuffer& operator=(IndexBuffer&&) = delete;
+
+		inline size_t getCount() const
+		{
+			return m_Count;
+		}
 	private:
 		const Application* m_Application;
 
 		void* m_Handle;
 		void* m_Memory;
+
+		size_t m_Count;
 
 		friend class Application;
 		friend class Renderer;

@@ -2,6 +2,7 @@
 set(Headers
 	include/Application.hpp
 	include/Buffer.hpp
+	include/BufferElement.hpp
 	include/common.hpp
 	include/File.hpp
 	include/glacier.hpp
@@ -9,6 +10,7 @@ set(Headers
 	include/Pipeline.hpp
 	include/Renderer.hpp
 	include/Shader.hpp
+	include/UniformBuffer.hpp
 	include/VertexBuffer.hpp
 	include/Window.hpp
 	include/internal/utility.hpp
@@ -22,6 +24,7 @@ set(Sources
 	src/Pipeline.cpp
 	src/Renderer.cpp
 	src/Shader.cpp
+	src/UniformBuffer.cpp
 	src/utility.cpp
 	src/VertexBuffer.cpp
 	src/Window.cpp

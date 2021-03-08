@@ -1,6 +1,6 @@
 #pragma once
 
-#include "common.hpp"
+#include "core/common.hpp"
 #include "Shader.hpp"
 #include "VertexBuffer.hpp"
 #include "IndexBuffer.hpp"

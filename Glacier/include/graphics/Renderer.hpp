@@ -1,7 +1,8 @@
 #pragma once
 
-#include "common.hpp"
+#include "core/common.hpp"
 #include "Shader.hpp"
+#include "LifecycleObject.hpp"
 
 #include <vector>
 #include <unordered_map>
@@ -15,7 +16,7 @@ namespace glacier
 	 * @brief Responsible for handling the state of the renderer.
 	 * @note May be recreated in which case Application::terminateRenderer() and Application::initializeRenderer() will be called.
 	*/
-	class Renderer
+	class Renderer : public LifecycleObject
 	{
 	public:
 		/**
@@ -46,6 +47,9 @@ namespace glacier
 
 		Renderer(Application* application);
 		~Renderer();
+
+		void create() override;
+		void destroy() override;
 
 		// Delete copy
 		inline Renderer(Renderer&) = delete;

@@ -1,33 +1,34 @@
 # Glacier
 set(Headers
-	include/Application.hpp
-	include/Buffer.hpp
-	include/BufferElement.hpp
-	include/common.hpp
-	include/File.hpp
 	include/glacier.hpp
-	include/IndexBuffer.hpp
-	include/Pipeline.hpp
-	include/Renderer.hpp
-	include/Shader.hpp
-	include/UniformBuffer.hpp
-	include/VertexBuffer.hpp
-	include/Window.hpp
+	include/core/common.hpp
+	include/core/Application.hpp
+	include/io/Buffer.hpp
+	include/io/File.hpp
+	include/graphics/BufferElement.hpp
+	include/graphics/IndexBuffer.hpp
+	include/graphics/LifecycleObject.hpp
+	include/graphics/Pipeline.hpp
+	include/graphics/Renderer.hpp
+	include/graphics/Shader.hpp
+	include/graphics/UniformBuffer.hpp
+	include/graphics/VertexBuffer.hpp
+	include/graphics/Window.hpp
 	include/internal/utility.hpp
 )
 
 set(Sources
-	src/Application.cpp
-	src/common.cpp
-	src/File.cpp
-	src/IndexBuffer.cpp
-	src/Pipeline.cpp
-	src/Renderer.cpp
-	src/Shader.cpp
-	src/UniformBuffer.cpp
-	src/utility.cpp
-	src/VertexBuffer.cpp
-	src/Window.cpp
+	src/core/common.cpp
+	src/core/Application.cpp
+	src/io/File.cpp
+	src/graphics/IndexBuffer.cpp
+	src/graphics/Pipeline.cpp
+	src/graphics/Renderer.cpp
+	src/graphics/Shader.cpp
+	src/graphics/UniformBuffer.cpp
+	src/graphics/VertexBuffer.cpp
+	src/graphics/Window.cpp
+	src/internal/utility.cpp
 )
 
 if(GLACIER_DYNAMIC_LINK)

@@ -1,7 +1,8 @@
 #pragma once
 
-#include "common.hpp"
+#include "core/common.hpp"
 #include "BufferElement.hpp"
+#include "LifecycleObject.hpp"
 
 #include <vector>
 
@@ -18,9 +19,6 @@ namespace glacier
 	class VertexBufferLayout
 	{
 	public:
-		//VertexBufferLayout() {}
-		//~VertexBufferLayout() {}
-
 		/**
 		 * @brief Push an element to the end of this layout.
 		 * @param elementType Primitive type of the element to be pushed.
@@ -38,11 +36,15 @@ namespace glacier
 		friend class Pipeline;
 	};
 
-	class VertexBuffer
+	class VertexBuffer : public LifecycleObject
 	{
 	public:
-		GLACIER_API VertexBuffer(const Application* application, const void* data, uint64_t size, const VertexBufferLayout& layout);
+		GLACIER_API VertexBuffer(const Application* application, const void* data, size_t size, const VertexBufferLayout& layout);
 		GLACIER_API ~VertexBuffer();
+
+		// TODO: Document
+		GLACIER_API void create() override;
+		GLACIER_API void destroy() override;
 
 		// Delete copy
 		VertexBuffer(const VertexBuffer&) = delete;
@@ -58,6 +60,8 @@ namespace glacier
 
 		void* m_Handle;
 		void* m_Memory;
+		void* m_Data;
+		size_t m_Size;
 
 		friend class Application;
 		friend class Renderer;

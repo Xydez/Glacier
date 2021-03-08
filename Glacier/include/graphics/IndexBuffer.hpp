@@ -1,6 +1,7 @@
 #pragma once
 
-#include "common.hpp"
+#include "core/common.hpp"
+#include "graphics/LifecycleObject.hpp"
 
 namespace glacier
 {
@@ -10,7 +11,7 @@ namespace glacier
 	 * @brief %Buffer containing the indices of the vertices that should be rendered.
 	 * @warning Must only be created in Application::initializeRenderer()
 	*/
-	class IndexBuffer
+	class IndexBuffer : public LifecycleObject
 	{
 	public:
 		/**
@@ -27,6 +28,9 @@ namespace glacier
 		 * @warning Must only be called in Application::terminateRenderer()
 		*/
 		GLACIER_API ~IndexBuffer();
+
+		GLACIER_API void create() override;
+		GLACIER_API void destroy() override;
 
 		// Delete copy
 		IndexBuffer(const IndexBuffer&) = delete;
@@ -45,6 +49,7 @@ namespace glacier
 
 		void* m_Handle;
 		void* m_Memory;
+		void* m_Data;
 
 		size_t m_Count;
 

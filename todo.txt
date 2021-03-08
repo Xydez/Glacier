@@ -1,14 +1,17 @@
 /*
 
 TODO:
-* Uniform buffers (https://vulkan-tutorial.com/Uniform_buffers/Descriptor_layout_and_buffer)
-  - Descriptor pools and sets (https://vulkan-tutorial.com/en/Uniform_buffers/Descriptor_pool_and_sets)
-* LifecycleObject
+* LifecycleObject <WIP>
   - Every vulkan object extends LifecycleObject
   - See code block 1
+* Support rendering multiple vertex buffers
+  - Maybe renderer.add(Pipeline* pipeline) for each render call.
 * Textures (https://vulkan-tutorial.com/Texture_mapping/Images)
 * F11 Fullscreen keybind
 
+DONE:
+* Uniform buffers (https://vulkan-tutorial.com/Uniform_buffers/Descriptor_layout_and_buffer)
+  - Descriptor pools and sets (https://vulkan-tutorial.com/en/Uniform_buffers/Descriptor_pool_and_sets)
 */
 
 

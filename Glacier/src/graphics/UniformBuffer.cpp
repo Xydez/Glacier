@@ -1,6 +1,6 @@
-#include "UniformBuffer.hpp"
-#include "Application.hpp"
-#include "Renderer.hpp"
+#include "graphics/UniformBuffer.hpp"
+#include "core/Application.hpp"
+#include "graphics/Renderer.hpp"
 
 #include "internal/utility.hpp"
 
@@ -14,6 +14,18 @@
 
 glacier::UniformBuffer::UniformBuffer(const Application* application, size_t size)
     : m_Application(application), m_Size(size)
+{
+    create();
+}
+
+glacier::UniformBuffer::~UniformBuffer()
+{
+    //vkFreeDescriptorSets(static_cast<VkDevice>(m_Application->m_Device), static_cast<VkDescriptorPool>(m_Application->m_Renderer->m_DescriptorPool), m_DescriptorSets.size(), reinterpret_cast<VkDescriptorSet*>(m_DescriptorSets.data()));
+
+    destroy();
+}
+
+void glacier::UniformBuffer::create()
 {
     unsigned int imageCount = m_Application->m_Renderer->m_Images.size();
 
@@ -46,7 +58,7 @@ glacier::UniformBuffer::UniformBuffer(const Application* application, size_t siz
         VkDescriptorBufferInfo bufferInfo = {};
         bufferInfo.buffer = static_cast<VkBuffer>(m_HandleVector[i]);
         bufferInfo.offset = 0;
-        bufferInfo.range = size;
+        bufferInfo.range = m_Size;
 
         VkWriteDescriptorSet writeDescriptorSet = {};
         writeDescriptorSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -63,10 +75,8 @@ glacier::UniformBuffer::UniformBuffer(const Application* application, size_t siz
     }
 }
 
-glacier::UniformBuffer::~UniformBuffer()
+void glacier::UniformBuffer::destroy()
 {
-    //vkFreeDescriptorSets(static_cast<VkDevice>(m_Application->m_Device), static_cast<VkDescriptorPool>(m_Application->m_Renderer->m_DescriptorPool), m_DescriptorSets.size(), reinterpret_cast<VkDescriptorSet*>(m_DescriptorSets.data()));
-
     for (unsigned int i = 0; i < m_HandleVector.size(); i++)
         vkDestroyBuffer(static_cast<VkDevice>(m_Application->m_Device), static_cast<VkBuffer>(m_HandleVector[i]), nullptr);
 

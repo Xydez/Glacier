@@ -1,6 +1,6 @@
-#include "Renderer.hpp"
-#include "Application.hpp"
-#include "Pipeline.hpp"
+#include "graphics/Renderer.hpp"
+#include "core/Application.hpp"
+#include "graphics/Pipeline.hpp"
 #include "internal/utility.hpp"
 
 #include <spdlog/spdlog.h>
@@ -304,6 +304,13 @@ void destroySwapchain(const VkDevice& device, std::vector<VkFramebuffer>& frameb
 
 void glacier::Renderer::bindPipeline(const Pipeline& pipeline)
 {
+	// TODO:
+	// 1. Store one command buffer and re-record it when a pipeline is bound
+	// OR
+	// 2. Store one command buffer per pipeline and record it in create()
+	//    Pipeline pipeline = new Pipeline(renderer);
+	//    pipeline.bind(); // Bind the pipeline to its renderer.
+
 	/* Unbind old pipeline */
 	if (!m_CommandBuffers.empty())
 		unbindPipeline();
@@ -382,6 +389,16 @@ void glacier::Renderer::unbindPipeline()
 glacier::Renderer::Renderer(Application* application)
 	: m_Application(application), m_Swapchain(nullptr)
 {
+	create();
+}
+
+glacier::Renderer::~Renderer()
+{
+	destroy();
+}
+
+void glacier::Renderer::create()
+{
 	vkDeviceWaitIdle(static_cast<VkDevice>(m_Application->m_Device));
 
 	glacier::g_Logger->trace("Creating swapchain...");
@@ -434,7 +451,7 @@ glacier::Renderer::Renderer(Application* application)
 	vkGetDeviceQueue(static_cast<VkDevice>(m_Application->m_Device), queueFamilyIndices.presentationFamily.value(), 0, reinterpret_cast<VkQueue*>(&m_PresentationQueue));
 }
 
-glacier::Renderer::~Renderer()
+void glacier::Renderer::destroy()
 {
 	vkDeviceWaitIdle(static_cast<VkDevice>(m_Application->m_Device));
 

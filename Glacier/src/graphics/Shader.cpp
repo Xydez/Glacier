@@ -1,6 +1,6 @@
-#include "Shader.hpp"
-#include "Application.hpp"
-#include "File.hpp"
+#include "graphics/Shader.hpp"
+#include "core/Application.hpp"
+#include "io/File.hpp"
 
 #include <fstream>
 

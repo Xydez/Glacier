@@ -4,7 +4,7 @@
 
 #include <glm/vec2.hpp>
 
-#include "common.hpp"
+#include "core/common.hpp"
 
 namespace glacier
 {

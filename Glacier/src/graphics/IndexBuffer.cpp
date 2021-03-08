@@ -1,6 +1,6 @@
-#include "IndexBuffer.hpp"
-#include "Application.hpp"
-#include "Renderer.hpp"
+#include "graphics/IndexBuffer.hpp"
+#include "core/Application.hpp"
+#include "graphics/Renderer.hpp"
 #include "internal/utility.hpp"
 
 #include <stdexcept>
@@ -8,6 +8,23 @@
 
 glacier::IndexBuffer::IndexBuffer(const Application* application, const uint32_t* data, size_t count)
 	: m_Application(application), m_Count(count)
+{
+	size_t size = m_Count * sizeof(uint32_t);
+
+	m_Data = new char[m_Count * sizeof(uint32_t)];
+	memcpy(m_Data, data, size);
+
+	create();
+}
+
+glacier::IndexBuffer::~IndexBuffer()
+{
+	delete[] m_Data;
+
+	destroy();
+}
+
+void glacier::IndexBuffer::create()
 {
 	size_t size = m_Count * sizeof(uint32_t);
 
@@ -19,7 +36,7 @@ glacier::IndexBuffer::IndexBuffer(const Application* application, const uint32_t
 	/* Copy data to the staging buffer */
 	void* tmp;
 	vkMapMemory(static_cast<VkDevice>(m_Application->m_Device), stagingBufferMemory, 0, size, 0, &tmp);
-	memcpy(tmp, data, size);
+	memcpy(tmp, m_Data, size);
 	vkUnmapMemory(static_cast<VkDevice>(m_Application->m_Device), stagingBufferMemory);
 
 	/* Copy data from the staging buffer to the index buffer on the GPU */
@@ -31,11 +48,11 @@ glacier::IndexBuffer::IndexBuffer(const Application* application, const uint32_t
 	vkFreeMemory(static_cast<VkDevice>(m_Application->m_Device), stagingBufferMemory, nullptr);
 }
 
-glacier::IndexBuffer::~IndexBuffer()
+void glacier::IndexBuffer::destroy()
 {
 	if (m_Handle)
 		vkDestroyBuffer(static_cast<VkDevice>(m_Application->m_Device), static_cast<VkBuffer>(m_Handle), nullptr);
-	
+
 	if (m_Memory)
 		vkFreeMemory(static_cast<VkDevice>(m_Application->m_Device), static_cast<VkDeviceMemory>(m_Memory), nullptr);
 }

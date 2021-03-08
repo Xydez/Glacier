@@ -1,6 +1,6 @@
-#include "Pipeline.hpp"
-#include "Application.hpp"
-#include "Renderer.hpp"
+#include "graphics/Pipeline.hpp"
+#include "core/Application.hpp"
+#include "graphics/Renderer.hpp"
 
 #include <vulkan/vulkan.h>
 #include <spdlog/spdlog.h>

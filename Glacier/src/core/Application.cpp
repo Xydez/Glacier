@@ -1,9 +1,9 @@
 #pragma warning(push)
 #pragma warning(disable: 26812)
 
-#include "Application.hpp"
-#include "VertexBuffer.hpp"
-#include "Renderer.hpp"
+#include "core/Application.hpp"
+#include "graphics/VertexBuffer.hpp"
+#include "graphics/Renderer.hpp"
 #include "internal/utility.hpp"
 
 #include <vector>

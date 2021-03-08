@@ -1,7 +1,7 @@
 #pragma once
 
-#include "common.hpp"
-#include "Buffer.hpp"
+#include "core/common.hpp"
+#include "io/Buffer.hpp"
 
 #include <string_view>
 

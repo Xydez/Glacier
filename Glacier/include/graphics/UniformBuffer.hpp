@@ -1,7 +1,8 @@
 #pragma once
 
-#include "common.hpp"
+#include "core/common.hpp"
 #include "BufferElement.hpp"
+#include "LifecycleObject.hpp"
 
 #include <vector>
 
@@ -13,7 +14,7 @@ namespace glacier
 	 * @brief %Buffer containing the uniforms that will be passed to the shader on the GPU.
 	 * @warning Must only be created in Application::initializeRenderer() and destroyed in Application::terminateRenderer()
 	*/
-	class UniformBuffer
+	class UniformBuffer : public LifecycleObject
 	{
 	public:
 		/**
@@ -29,6 +30,9 @@ namespace glacier
 		 * @warning Must only be called in Application::terminateRenderer()
 		*/
 		GLACIER_API ~UniformBuffer();
+
+		GLACIER_API void create() override;
+		GLACIER_API void destroy() override;
 
 		/**
 		 * @brief Set the data in the buffer.

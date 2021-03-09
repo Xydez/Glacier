@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <unordered_map>
 
 #include <glm/vec2.hpp>
 
@@ -66,6 +67,15 @@ namespace glacier
 		Window& operator=(Window&&) = delete;
 
 		void* m_Handle;
+
+		bool m_IsFullscreen;
+
+		int m_LastWidth;
+		int m_LastHeight;
+		int m_LastPosX;
+		int m_LastPosY;
+
+		static std::unordered_map<void*, Window*> s_Windows;
 
 		friend class Application;
 	};

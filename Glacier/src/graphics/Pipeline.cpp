@@ -6,8 +6,24 @@
 #include <spdlog/spdlog.h>
 #include <glm/glm.hpp>
 
-glacier::Pipeline::Pipeline(const glacier::Application* application, const glacier::Renderer* renderer, const std::unordered_map<ShaderType, Shader*>& shaders, const std::optional<UniformBuffer*>& uniformBuffer, const VertexBuffer* vertexBuffer, const IndexBuffer* indexBuffer)
+glacier::Pipeline::Pipeline(const glacier::Application* application, const std::unordered_map<ShaderType, Shader*>& shaders, const std::optional<UniformBuffer*>& uniformBuffer, const VertexBuffer* vertexBuffer, const IndexBuffer* indexBuffer)
 	: m_Application(application), m_VertexBuffer(vertexBuffer), m_IndexBuffer(indexBuffer), m_Shaders(shaders), m_UniformBuffer(uniformBuffer)
+{
+	//m_Application->m_Renderer->m_Pipelines.push_back(this);
+
+	// TODO: Called in Renderer#addPipeline()
+	//create();
+}
+
+glacier::Pipeline::~Pipeline()
+{
+	//m_Application->m_Renderer->m_Pipelines.erase();
+
+	// TODO: Called in Renderer#removePipeline()
+	//destroy();
+}
+
+void glacier::Pipeline::create()
 {
 	glacier::g_Logger->trace("Creating pipeline...");
 
@@ -15,7 +31,7 @@ glacier::Pipeline::Pipeline(const glacier::Application* application, const glaci
 
 	bool hasVertex = false, hasFragment = false;
 
-	for (const std::pair<ShaderType, Shader*>& pair : shaders)
+	for (const std::pair<ShaderType, Shader*>& pair : m_Shaders)
 	{
 		VkPipelineShaderStageCreateInfo shaderCreateInfo = {};
 		shaderCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -59,10 +75,10 @@ glacier::Pipeline::Pipeline(const glacier::Application* application, const glaci
 	// ->
 
 	vertexInputCreateInfo.vertexBindingDescriptionCount = 1;
-	VkVertexInputBindingDescription bindingDescription = vertexBuffer->m_Layout.getBindingDescription();
+	VkVertexInputBindingDescription bindingDescription = m_VertexBuffer->m_Layout.getBindingDescription();
 	vertexInputCreateInfo.pVertexBindingDescriptions = &bindingDescription;
-	
-	std::vector<VkVertexInputAttributeDescription> attributeDescriptions = vertexBuffer->m_Layout.getAttributeDescriptions();
+
+	std::vector<VkVertexInputAttributeDescription> attributeDescriptions = m_VertexBuffer->m_Layout.getAttributeDescriptions();
 	vertexInputCreateInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
 	vertexInputCreateInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
 
@@ -78,7 +94,7 @@ glacier::Pipeline::Pipeline(const glacier::Application* application, const glaci
 	viewport.x = 0.0f;
 	viewport.y = 0.0f;
 
-	glm::uvec2 size = application->m_Window->getFramebufferSize();
+	glm::uvec2 size = m_Application->m_Window->getFramebufferSize();
 	viewport.width = static_cast<float>(size.x);
 	viewport.height = static_cast<float>(size.y);
 	viewport.minDepth = 0.0f;
@@ -147,7 +163,7 @@ glacier::Pipeline::Pipeline(const glacier::Application* application, const glaci
 	pipelineLayoutCreateInfo.pushConstantRangeCount = 0;
 	pipelineLayoutCreateInfo.pPushConstantRanges = nullptr;
 
-	if (vkCreatePipelineLayout(static_cast<VkDevice>(application->m_Device), &pipelineLayoutCreateInfo, nullptr, reinterpret_cast<VkPipelineLayout*>(&m_PipelineLayout)) != VK_SUCCESS)
+	if (vkCreatePipelineLayout(static_cast<VkDevice>(m_Application->m_Device), &pipelineLayoutCreateInfo, nullptr, reinterpret_cast<VkPipelineLayout*>(&m_PipelineLayout)) != VK_SUCCESS)
 	{
 		throw std::runtime_error("Failed to create pipeline layout");
 	}
@@ -173,7 +189,7 @@ glacier::Pipeline::Pipeline(const glacier::Application* application, const glaci
 
 	graphicsPipelineCreateInfo.layout = static_cast<VkPipelineLayout>(m_PipelineLayout);
 
-	graphicsPipelineCreateInfo.renderPass = static_cast<VkRenderPass>(renderer->m_RenderPass);
+	graphicsPipelineCreateInfo.renderPass = static_cast<VkRenderPass>(m_Application->m_Renderer->m_RenderPass);
 	graphicsPipelineCreateInfo.subpass = 0;
 
 	graphicsPipelineCreateInfo.basePipelineHandle = VK_NULL_HANDLE;
@@ -185,8 +201,17 @@ glacier::Pipeline::Pipeline(const glacier::Application* application, const glaci
 	}
 }
 
-glacier::Pipeline::~Pipeline()
+void glacier::Pipeline::destroy()
 {
 	vkDestroyPipeline(static_cast<VkDevice>(m_Application->m_Device), static_cast<VkPipeline>(m_Pipeline), nullptr);
 	vkDestroyPipelineLayout(static_cast<VkDevice>(m_Application->m_Device), static_cast<VkPipelineLayout>(m_PipelineLayout), nullptr);
+}
+
+void glacier::Pipeline::bind()
+{
+	
+}
+
+void glacier::Pipeline::unbind()
+{
 }

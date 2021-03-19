@@ -42,7 +42,6 @@ namespace glacier
 		GLACIER_API VertexBuffer(const Application* application, const void* data, size_t size, const VertexBufferLayout& layout);
 		GLACIER_API ~VertexBuffer();
 
-		// TODO: Document
 		GLACIER_API void create() override;
 		GLACIER_API void destroy() override;
 

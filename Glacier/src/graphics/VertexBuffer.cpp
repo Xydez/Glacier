@@ -15,12 +15,20 @@ glacier::VertexBuffer::VertexBuffer(const Application* application, const void* 
 	m_Data = new char[size];
 	memcpy(m_Data, data, size);
 
-	// TODO: Should be called from renderer
 	create();
+
+	m_Application->m_Renderer->m_LifecycleObjects.push_back(this);
 }
 
 glacier::VertexBuffer::~VertexBuffer()
 {
+	for (std::vector<LifecycleObject*>::iterator iter = m_Application->m_Renderer->m_LifecycleObjects.begin(); iter != m_Application->m_Renderer->m_LifecycleObjects.end(); iter++)
+		if (*iter == this)
+		{
+			m_Application->m_Renderer->m_LifecycleObjects.erase(iter);
+			break;
+		}
+
 	delete[] m_Data;
 
 	destroy();

@@ -16,12 +16,13 @@ glacier::UniformBuffer::UniformBuffer(const Application* application, size_t siz
     : m_Application(application), m_Size(size)
 {
     create();
+
+    //m_Application->m_Renderer->m_LifecycleObjects.push_back(this);
 }
 
 glacier::UniformBuffer::~UniformBuffer()
 {
     //vkFreeDescriptorSets(static_cast<VkDevice>(m_Application->m_Device), static_cast<VkDescriptorPool>(m_Application->m_Renderer->m_DescriptorPool), m_DescriptorSets.size(), reinterpret_cast<VkDescriptorSet*>(m_DescriptorSets.data()));
-
     destroy();
 }
 

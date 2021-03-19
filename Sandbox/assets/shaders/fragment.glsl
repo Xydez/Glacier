@@ -9,5 +9,12 @@ layout (location = 0) out vec4 outColor;
 
 void main()
 {
-	outColor = vec4(fragColor, 1.0);
+	if (int(gl_FragCoord.x) % 10 == 0 || int(gl_FragCoord.y) % 10 == 0)
+	{
+		outColor = vec4(fragColor, 1.0);
+	}
+	else
+	{
+		outColor = vec4(0.0, 0.0, 0.0, 1.0);
+	}
 }

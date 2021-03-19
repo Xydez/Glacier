@@ -40,9 +40,9 @@ VkPresentModeKHR choosePresentMode(const std::vector<VkPresentModeKHR>& modes, b
 		if (vsync == false && mode == VK_PRESENT_MODE_IMMEDIATE_KHR)
 			return mode;
 
-		// If vsync is enabled, prefer triple buffering over double buffering.
-		if (vsync == true && mode == VK_PRESENT_MODE_MAILBOX_KHR)
-			return mode;
+		// If vsync is enabled, prefer triple buffering over double buffering. (Commented out because it didn't work)
+		//if (vsync == true && mode == VK_PRESENT_MODE_MAILBOX_KHR)
+		//	return mode;
 	}
 
 	// If the preferred modes aren't available, default to double buffering.
@@ -302,99 +302,77 @@ void destroySwapchain(const VkDevice& device, std::vector<VkFramebuffer>& frameb
 }
 /* ------------------ */
 
+/*
 void glacier::Renderer::bindPipeline(const Pipeline& pipeline)
 {
-	// TODO:
-	// 1. Store one command buffer and re-record it when a pipeline is bound
-	// OR
-	// 2. Store one command buffer per pipeline and record it in create()
-	//    Pipeline pipeline = new Pipeline(renderer);
-	//    pipeline.bind(); // Bind the pipeline to its renderer.
-
-	/* Unbind old pipeline */
-	if (!m_CommandBuffers.empty())
-		unbindPipeline();
-
-	/* Create command buffers */
-	glm::uvec2 size = m_Application->m_Window->getFramebufferSize();
-	VkExtent2D extent = { size.x, size.y };
-
-	createCommandBuffers(static_cast<VkDevice>(m_Application->m_Device), reinterpret_cast<const std::vector<VkFramebuffer>&>(m_Framebuffers), static_cast<VkCommandPool>(m_CommandPool), reinterpret_cast<std::vector<VkCommandBuffer>&>(m_CommandBuffers));
-
-	/* Fill command buffers */
-	size_t count = pipeline.m_IndexBuffer->getCount();
-
-	for (size_t i = 0; i < m_CommandBuffers.size(); i++)
-	{
-		VkCommandBufferBeginInfo commandBufferBeginInfo = {};
-		commandBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-		commandBufferBeginInfo.flags = 0;
-		commandBufferBeginInfo.pInheritanceInfo = nullptr;
-
-		if (vkBeginCommandBuffer(static_cast<VkCommandBuffer>(m_CommandBuffers[i]), &commandBufferBeginInfo) != VK_SUCCESS)
-		{
-			throw std::runtime_error("Failed to begin command buffer");
-		}
-
-		// Begin render pass
-		VkRenderPassBeginInfo renderPassBeginInfo = {};
-		renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-		renderPassBeginInfo.renderPass = static_cast<VkRenderPass>(m_RenderPass);
-		renderPassBeginInfo.framebuffer = static_cast<VkFramebuffer>(m_Framebuffers[i]);
-
-		renderPassBeginInfo.renderArea.offset = { 0, 0 };
-		renderPassBeginInfo.renderArea.extent = extent;
-
-		VkClearValue clearColor = { 0.0f, 0.0f, 0.0f, 1.0f };
-		renderPassBeginInfo.clearValueCount = 1;
-		renderPassBeginInfo.pClearValues = &clearColor;
-
-		vkCmdBeginRenderPass(static_cast<VkCommandBuffer>(m_CommandBuffers[i]), &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
-
-		vkCmdBindPipeline(static_cast<VkCommandBuffer>(m_CommandBuffers[i]), VK_PIPELINE_BIND_POINT_GRAPHICS, static_cast<VkPipeline>(pipeline.m_Pipeline));
-
-		VkBuffer vertexBuffers[] = { static_cast<VkBuffer>(pipeline.m_VertexBuffer->m_Handle) };
-		VkDeviceSize offsets[] = { 0 };
-		vkCmdBindVertexBuffers(static_cast<VkCommandBuffer>(m_CommandBuffers[i]), 0, 1, vertexBuffers, offsets);
-		if (pipeline.m_IndexBuffer)
-			vkCmdBindIndexBuffer(static_cast<VkCommandBuffer>(m_CommandBuffers[i]), static_cast<VkBuffer>(pipeline.m_IndexBuffer->m_Handle), 0, VK_INDEX_TYPE_UINT32);
-
-		if (pipeline.m_UniformBuffer.has_value())
-		{
-			vkCmdBindDescriptorSets(static_cast<VkCommandBuffer>(m_CommandBuffers[i]), VK_PIPELINE_BIND_POINT_GRAPHICS, static_cast<VkPipelineLayout>(pipeline.m_PipelineLayout), 0, 1, reinterpret_cast<VkDescriptorSet*>(&pipeline.m_UniformBuffer.value()->m_DescriptorSets[i]), 0, nullptr);
-		}
-
-		if (pipeline.m_IndexBuffer)
-			vkCmdDrawIndexed(static_cast<VkCommandBuffer>(m_CommandBuffers[i]), count, 1, 0, 0, 0);
-		else
-			vkCmdDraw(static_cast<VkCommandBuffer>(m_CommandBuffers[i]), count, 1, 0, 0);
-
-		vkCmdEndRenderPass(static_cast<VkCommandBuffer>(m_CommandBuffers[i]));
-
-		if (vkEndCommandBuffer(static_cast<VkCommandBuffer>(m_CommandBuffers[i])) != VK_SUCCESS)
-		{
-			throw std::runtime_error("Failed to end command buffer");
-		}
-	}
 }
 
 void glacier::Renderer::unbindPipeline()
 {
-	vkDeviceWaitIdle(static_cast<VkDevice>(m_Application->m_Device));
+	
 
-	vkFreeCommandBuffers(static_cast<VkDevice>(m_Application->m_Device), static_cast<VkCommandPool>(m_CommandPool), static_cast<uint32_t>(m_CommandBuffers.size()), reinterpret_cast<VkCommandBuffer*>(m_CommandBuffers.data()));
-	m_CommandBuffers.clear();
+	
+}
+*/
+
+void glacier::Renderer::addPipeline(Pipeline* pipeline)
+{
+	for (Pipeline*& p : m_Pipelines)
+		if (p == pipeline)
+		{
+			glacier::g_Logger->error("Pipeline is could not be added because it's already added to this renderer");
+			return;
+		}
+
+	pipeline->create();
+	m_Pipelines.push_back(pipeline);
+
+	recreateCommandBuffers();
+}
+
+void glacier::Renderer::removePipeline(Pipeline* pipeline)
+{
+	for (unsigned int i = 0; i < m_Pipelines.size(); i++)
+		if (m_Pipelines[i] == pipeline)
+		{
+			pipeline->destroy();
+			m_Pipelines.erase(m_Pipelines.begin() + i);
+
+			recreateCommandBuffers();
+			return;
+		}
+
+	glacier::g_Logger->error("Pipeline could not be removed because it isn't added to this renderer");
 }
 
 glacier::Renderer::Renderer(Application* application)
 	: m_Application(application), m_Swapchain(nullptr)
 {
 	create();
+
+	/* Create descriptor pool */
+	VkDescriptorPoolSize descriptorPoolSize = {};
+	descriptorPoolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	descriptorPoolSize.descriptorCount = m_Images.size();
+
+	VkDescriptorPoolCreateInfo descriptorPoolCreateInfo = {};
+	descriptorPoolCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+	descriptorPoolCreateInfo.poolSizeCount = 1;
+	descriptorPoolCreateInfo.pPoolSizes = &descriptorPoolSize;
+	descriptorPoolCreateInfo.maxSets = m_Images.size();
+
+	VkResult result = vkCreateDescriptorPool(static_cast<VkDevice>(m_Application->m_Device), &descriptorPoolCreateInfo, nullptr, reinterpret_cast<VkDescriptorPool*>(&m_DescriptorPool));
+	if (result != VK_SUCCESS)
+	{
+		throw std::runtime_error(fmt::format("Failed to create descriptor pool (Returned {})", result));
+	}
 }
 
 glacier::Renderer::~Renderer()
 {
 	destroy();
+
+	vkDestroyDescriptorPool(static_cast<VkDevice>(m_Application->m_Device), static_cast<VkDescriptorPool>(m_DescriptorPool), nullptr);
 }
 
 void glacier::Renderer::create()
@@ -429,26 +407,18 @@ void glacier::Renderer::create()
 
 	createCommandPool(static_cast<VkDevice>(m_Application->m_Device), queueFamilyIndices, reinterpret_cast<VkCommandPool*>(&m_CommandPool));
 
-	/* Create descriptor pool */
-	VkDescriptorPoolSize descriptorPoolSize = {};
-	descriptorPoolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	descriptorPoolSize.descriptorCount = m_Images.size();
-
-	VkDescriptorPoolCreateInfo descriptorPoolCreateInfo = {};
-	descriptorPoolCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-	descriptorPoolCreateInfo.poolSizeCount = 1;
-	descriptorPoolCreateInfo.pPoolSizes = &descriptorPoolSize;
-	descriptorPoolCreateInfo.maxSets = m_Images.size();
-
-	VkResult result = vkCreateDescriptorPool(static_cast<VkDevice>(m_Application->m_Device), &descriptorPoolCreateInfo, nullptr, reinterpret_cast<VkDescriptorPool*>(&m_DescriptorPool));
-	if (result != VK_SUCCESS)
-	{
-		throw std::runtime_error(fmt::format("Failed to create descriptor pool (Returned {})", result));
-	}
-
 	/* Get queues */
 	vkGetDeviceQueue(static_cast<VkDevice>(m_Application->m_Device), queueFamilyIndices.graphicsFamily.value(), 0, reinterpret_cast<VkQueue*>(&m_GraphicsQueue));
 	vkGetDeviceQueue(static_cast<VkDevice>(m_Application->m_Device), queueFamilyIndices.presentationFamily.value(), 0, reinterpret_cast<VkQueue*>(&m_PresentationQueue));
+
+	/* Recreate */
+	for (LifecycleObject*& obj : m_LifecycleObjects)
+		obj->create();
+
+	for (Pipeline*& pipeline : m_Pipelines)
+		pipeline->create();
+
+	recreateCommandBuffers();
 }
 
 void glacier::Renderer::destroy()
@@ -459,11 +429,101 @@ void glacier::Renderer::destroy()
 	std::vector<VkCommandBuffer>* commandBuffers = reinterpret_cast<std::vector<VkCommandBuffer>*>(&m_CommandBuffers);
 	std::vector<VkImageView>* imageViews = reinterpret_cast<std::vector<VkImageView>*>(&m_ImageViews);
 
-	unbindPipeline();
+	for (Pipeline*& pipeline : m_Pipelines)
+		pipeline->destroy();
+
+	for (LifecycleObject*& obj : m_LifecycleObjects)
+		obj->destroy();
 
 	destroySwapchain(static_cast<VkDevice>(m_Application->m_Device), *framebuffers, reinterpret_cast<VkRenderPass*>(&m_RenderPass), *imageViews, reinterpret_cast<VkSwapchainKHR*>(&m_Swapchain));
 
-	vkDestroyCommandPool(static_cast<VkDevice>(m_Application->m_Device), static_cast<VkCommandPool>(m_CommandPool), nullptr);
+	vkFreeCommandBuffers(static_cast<VkDevice>(m_Application->m_Device), static_cast<VkCommandPool>(m_CommandPool), static_cast<uint32_t>(m_CommandBuffers.size()), reinterpret_cast<VkCommandBuffer*>(m_CommandBuffers.data()));
+	m_CommandBuffers.clear();
 
-	vkDestroyDescriptorPool(static_cast<VkDevice>(m_Application->m_Device), static_cast<VkDescriptorPool>(m_DescriptorPool), nullptr);
+	vkDestroyCommandPool(static_cast<VkDevice>(m_Application->m_Device), static_cast<VkCommandPool>(m_CommandPool), nullptr);
+}
+
+// TODO: Separate recreating and re-recording command buffers, don't destroy command & descriptor pool in create() since they're not part of the swapchain
+// TODO: Pipeline must be created before this!!!
+void glacier::Renderer::recreateCommandBuffers()
+{
+	/* Wait for device to become idle */
+	vkDeviceWaitIdle(static_cast<VkDevice>(m_Application->m_Device));
+
+	/* Destroy old command buffers */
+	if (!m_CommandBuffers.empty())
+	{
+		//TODO: The old command buffers are invalid because the command pool is destroyed. Maybe clear the command buffers so they all just get recreated?
+		vkFreeCommandBuffers(static_cast<VkDevice>(m_Application->m_Device), static_cast<VkCommandPool>(m_CommandPool), static_cast<uint32_t>(m_CommandBuffers.size()), reinterpret_cast<VkCommandBuffer*>(m_CommandBuffers.data()));
+		m_CommandBuffers.clear();
+	}
+
+	/* Create new command buffers */
+	glm::uvec2 size = m_Application->m_Window->getFramebufferSize();
+	VkExtent2D extent = { size.x, size.y };
+
+	createCommandBuffers(static_cast<VkDevice>(m_Application->m_Device), reinterpret_cast<const std::vector<VkFramebuffer>&>(m_Framebuffers), static_cast<VkCommandPool>(m_CommandPool), reinterpret_cast<std::vector<VkCommandBuffer>&>(m_CommandBuffers));
+
+	/* Fill command buffers */
+	for (size_t i = 0; i < m_CommandBuffers.size(); i++)
+	{
+		VkCommandBufferBeginInfo commandBufferBeginInfo = {};
+		commandBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		commandBufferBeginInfo.flags = 0;
+		commandBufferBeginInfo.pInheritanceInfo = nullptr;
+
+		if (vkBeginCommandBuffer(static_cast<VkCommandBuffer>(m_CommandBuffers[i]), &commandBufferBeginInfo) != VK_SUCCESS)
+		{
+			throw std::runtime_error("Failed to begin command buffer");
+		}
+
+		// Begin render pass
+		VkRenderPassBeginInfo renderPassBeginInfo = {};
+		renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+		renderPassBeginInfo.renderPass = static_cast<VkRenderPass>(m_RenderPass);
+		renderPassBeginInfo.framebuffer = static_cast<VkFramebuffer>(m_Framebuffers[i]);
+
+		renderPassBeginInfo.renderArea.offset = { 0, 0 };
+		renderPassBeginInfo.renderArea.extent = extent;
+
+		VkClearValue clearColor = { 0.0f, 0.0f, 0.0f, 1.0f };
+		renderPassBeginInfo.clearValueCount = 1;
+		renderPassBeginInfo.pClearValues = &clearColor;
+
+		vkCmdBeginRenderPass(static_cast<VkCommandBuffer>(m_CommandBuffers[i]), &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+		/* Draw the pipelines */
+		for (Pipeline*& pipeline : m_Pipelines)
+		{
+			vkCmdBindPipeline(static_cast<VkCommandBuffer>(m_CommandBuffers[i]), VK_PIPELINE_BIND_POINT_GRAPHICS, static_cast<VkPipeline>(pipeline->m_Pipeline));
+
+			VkBuffer vertexBuffers[] = { static_cast<VkBuffer>(pipeline->m_VertexBuffer->m_Handle) };
+			VkDeviceSize offsets[] = { 0 };
+			vkCmdBindVertexBuffers(static_cast<VkCommandBuffer>(m_CommandBuffers[i]), 0, 1, vertexBuffers, offsets);
+			if (pipeline->m_IndexBuffer)
+				vkCmdBindIndexBuffer(static_cast<VkCommandBuffer>(m_CommandBuffers[i]), static_cast<VkBuffer>(pipeline->m_IndexBuffer->m_Handle), 0, VK_INDEX_TYPE_UINT32);
+
+			if (pipeline->m_UniformBuffer.has_value())
+			{
+				// TODO: Have VertexBuffer and IndexBuffer really been recreated? Check in debugger.
+				// TODO: So basically the uniform buffer (or "descriptor set") is invalid
+				// TODO: I'm sorry for leaving this buggy shitty piece of garbled nonsensical trash to you, honestly the entire game engine should just be rewritten already. Sincere apologies.
+				vkCmdBindDescriptorSets(static_cast<VkCommandBuffer>(m_CommandBuffers[i]), VK_PIPELINE_BIND_POINT_GRAPHICS, static_cast<VkPipelineLayout>(pipeline->m_PipelineLayout), 0, 1, reinterpret_cast<VkDescriptorSet*>(&(pipeline->m_UniformBuffer.value()->m_DescriptorSets[i])), 0, nullptr);
+			}
+
+			size_t count = pipeline->m_IndexBuffer->getCount();
+
+			if (pipeline->m_IndexBuffer)
+				vkCmdDrawIndexed(static_cast<VkCommandBuffer>(m_CommandBuffers[i]), count, 1, 0, 0, 0);
+			else
+				vkCmdDraw(static_cast<VkCommandBuffer>(m_CommandBuffers[i]), count, 1, 0, 0);
+		}
+
+		vkCmdEndRenderPass(static_cast<VkCommandBuffer>(m_CommandBuffers[i]));
+
+		if (vkEndCommandBuffer(static_cast<VkCommandBuffer>(m_CommandBuffers[i])) != VK_SUCCESS)
+		{
+			throw std::runtime_error("Failed to end command buffer");
+		}
+	}
 }

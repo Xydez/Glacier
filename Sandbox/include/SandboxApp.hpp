@@ -39,14 +39,11 @@ public:
 	~SandboxApp()
 	{}
 
-	void initialize() override
+	void initialize(glacier::Renderer* renderer) override
 	{
 		m_VertexShaderSource = glacier::File("shaders/vertex.spv").read_ptr();
 		m_FragmentShaderSource = glacier::File("shaders/fragment.spv").read_ptr();
-	}
 
-	void initializeRenderer(glacier::Renderer* renderer) override
-	{
 		float vertexBuffer[]{
 			-1.0f, -1.0f, 0.0f,  1.0f, 0.0f, 0.0f,
 			 1.0f, -1.0f, 0.0f,  0.0f, 1.0f, 0.0f,
@@ -75,9 +72,9 @@ public:
 
 		m_UniformBuffer = new glacier::UniformBuffer(this, sizeof(TestUniform));
 
-		m_Pipeline = new glacier::Pipeline(this, renderer, shaders, m_UniformBuffer, m_VertexBuffer, m_IndexBuffer);
+		m_Pipeline = new glacier::Pipeline(this, shaders, m_UniformBuffer, m_VertexBuffer, m_IndexBuffer);
 
-		renderer->bindPipeline(*m_Pipeline);
+		renderer->addPipeline(m_Pipeline);
 	}
 
 	void update(double delta) override
@@ -94,9 +91,9 @@ public:
 
 	void render(glacier::Renderer* renderer) override {}
 
-	void terminateRenderer(glacier::Renderer* renderer) override
+	void terminate(glacier::Renderer* renderer) override
 	{
-		renderer->unbindPipeline();
+		renderer->removePipeline(m_Pipeline);
 
 		delete m_UniformBuffer;
 
@@ -107,10 +104,7 @@ public:
 		delete m_IndexBuffer;
 
 		delete m_Pipeline;
-	}
 
-	void terminate() override
-	{
 		delete m_VertexShaderSource;
 		delete m_FragmentShaderSource;
 	}

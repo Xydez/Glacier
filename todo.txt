@@ -4,11 +4,13 @@ TODO:
 * LifecycleObject <WIP>
   - Every vulkan object extends LifecycleObject
   - See code block 1
+  - [BUG] The framebuffer isn't resizing correctly
 * Fix bug where sometimes the framerate doesn't match the refresh rate (In other words, vsync doesn't work)
 * Support rendering multiple vertex buffers
   - Maybe renderer.add(Pipeline* pipeline) for each render call.
 * Textures (https://vulkan-tutorial.com/Texture_mapping/Images)
 * F11 Fullscreen keybind
+* Make application close gracefully if an exception is thrown
 
 DONE:
 * Uniform buffers (https://vulkan-tutorial.com/Uniform_buffers/Descriptor_layout_and_buffer)

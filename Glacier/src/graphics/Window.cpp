@@ -42,7 +42,7 @@ glacier::Window::Window(const WindowCreateInfo& info)
 					GLFWmonitor* monitor = glfwGetWindowMonitor(window);
 					const GLFWvidmode* vidMode = glfwGetVideoMode(monitor);
 
-					glfwSetWindowMonitor(window, NULL, _this->m_LastPosX, _this->m_LastPosY, _this->m_LastWidth, _this->m_LastHeight, vidMode->refreshRate);
+					glfwSetWindowMonitor(window, nullptr, _this->m_LastPosX, _this->m_LastPosY, _this->m_LastWidth, _this->m_LastHeight, vidMode->refreshRate);
 				}
 				else
 				{

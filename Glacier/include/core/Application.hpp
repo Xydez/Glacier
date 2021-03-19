@@ -59,15 +59,7 @@ namespace glacier
 		 * @note Guranteed to only be called once, before rendering has begun.
 		 * @see terminate()
 		*/
-		virtual void initialize() {};
-
-		/**
-		 * @brief Initialize the renderer. Called when the renderer needs to be initialized.
-		 * @note Can be called multiple times, for example when the framebuffer is resized.
-		 * @param renderer The new renderer
-		 * @see terminateRenderer()
-		*/
-		virtual void initializeRenderer(Renderer* renderer) {};
+		virtual void initialize(Renderer* renderer) {};
 
 		/**
 		 * @brief Update the application. Called during the update stage of the main loop.
@@ -83,19 +75,11 @@ namespace glacier
 		virtual void render(Renderer* renderer) {}
 
 		/**
-		 * @brief Terminate the renderer. Called when the renderer needs to be terminated.
-		 * @note Can be called multiple times, for example when the framebuffer is resized.
-		 * @param renderer The renderer to be terminated.
-		 * @see initializeRenderer()
-		*/
-		virtual void terminateRenderer(Renderer* renderer) {}
-
-		/**
 		 * @brief Terminate the application. Called when the main loop has finished.
 		 * @note Guranteed to only be called once, after the rendering has finished.
 		 * @see initialize()
 		*/
-		virtual void terminate() {}
+		virtual void terminate(Renderer* renderer) {}
 	private:
 		ApplicationInfo m_Info;
 		Window* m_Window;

@@ -285,10 +285,8 @@ void glacier::Application::run()
 {
 	VkResult result = VK_SUCCESS;
 
-	initialize();
-
 	m_Renderer = new Renderer(this);
-	initializeRenderer(m_Renderer);
+	initialize(m_Renderer);
 
 	unsigned int bufferedFrameCount = m_Renderer->m_Images.size();
 
@@ -379,12 +377,15 @@ void glacier::Application::run()
 			/* Recreate the swapchain */
 			glacier::g_Logger->trace("Swapchain is outdated.");
 
-			terminateRenderer(m_Renderer);
+			//terminateRenderer(m_Renderer);
+			//
+			//delete m_Renderer;
+			//m_Renderer = new Renderer(this);
+			//
+			//initializeRenderer(m_Renderer);
 
-			delete m_Renderer;
-			m_Renderer = new Renderer(this);
-
-			initializeRenderer(m_Renderer);
+			m_Renderer->destroy();
+			m_Renderer->create();
 
 			/* Recreate semaphores */
 			for (size_t i = 0; i < bufferedFrameCount; i++)
@@ -446,7 +447,11 @@ void glacier::Application::run()
 
 		// Renderer needs to have a pipeline bound
 		if (m_Renderer->m_CommandBuffers.empty())
-			throw std::runtime_error("Renderer has no pipeline bound");
+		{
+			g_Logger->error("Renderer has no pipeline bound");
+			continue;
+			//throw std::runtime_error("Renderer has no pipeline bound");
+		}
 
 		submitInfo.commandBufferCount = 1;
 		submitInfo.pCommandBuffers = reinterpret_cast<VkCommandBuffer*>(&m_Renderer->m_CommandBuffers[imageIndex]); //&commandBuffers[imageIndex];
@@ -493,12 +498,15 @@ void glacier::Application::run()
 			/* Recreate the swapchain */
 			glacier::g_Logger->trace("Swapchain is outdated.");
 
-			terminateRenderer(m_Renderer);
+			//terminateRenderer(m_Renderer);
+			//
+			//delete m_Renderer;
+			//m_Renderer = new Renderer(this);
+			//
+			//initializeRenderer(m_Renderer);
 
-			delete m_Renderer;
-			m_Renderer = new Renderer(this);
-
-			initializeRenderer(m_Renderer);
+			m_Renderer->destroy();
+			m_Renderer->create();
 
 			/* Recreate semaphores */
 			for (size_t i = 0; i < bufferedFrameCount; i++)
@@ -548,10 +556,8 @@ void glacier::Application::run()
 		vkDestroyFence(static_cast<VkDevice>(m_Device), bufferedFences[i], nullptr);
 	}
 
-	terminateRenderer(m_Renderer);
+	terminate(m_Renderer);
 	delete m_Renderer;
-
-	terminate();
 }
 
 void glacier::Application::stop()

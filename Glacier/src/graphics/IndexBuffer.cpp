@@ -15,10 +15,19 @@ glacier::IndexBuffer::IndexBuffer(const Application* application, const uint32_t
 	memcpy(m_Data, data, size);
 
 	create();
+
+	m_Application->m_Renderer->m_LifecycleObjects.push_back(this);
 }
 
 glacier::IndexBuffer::~IndexBuffer()
 {
+	for (std::vector<LifecycleObject*>::iterator iter = m_Application->m_Renderer->m_LifecycleObjects.begin(); iter != m_Application->m_Renderer->m_LifecycleObjects.end(); iter++)
+		if (*iter == this)
+		{
+			m_Application->m_Renderer->m_LifecycleObjects.erase(iter);
+			break;
+		}
+
 	delete[] m_Data;
 
 	destroy();

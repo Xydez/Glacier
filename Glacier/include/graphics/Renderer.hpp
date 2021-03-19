@@ -24,13 +24,16 @@ namespace glacier
 		 * @param pipeline The pipeline to be bound.
 		 * @warning Must only be called in Application::initializeRenderer(), Application::update(), Application::render() or Application::terminateRenderer()
 		*/
-		GLACIER_API void bindPipeline(const Pipeline& pipeline);
+		//GLACIER_API void bindPipeline(const Pipeline& pipeline);
 
 		/**
 		 * @brief Unbind the currently bound graphics pipeline configuration.
 		 * @warning Must only be called in Application::initializeRenderer(), Application::update(), Application::render() or Application::terminateRenderer()
 		*/
-		GLACIER_API void unbindPipeline();
+		//GLACIER_API void unbindPipeline();
+
+		GLACIER_API void addPipeline(Pipeline* pipeline);
+		GLACIER_API void removePipeline(Pipeline* pipeline);
 	private:
 		Application* m_Application;
 		void* m_Swapchain;
@@ -44,12 +47,15 @@ namespace glacier
 		std::vector<void*> m_Images;
 		std::vector<void*> m_ImageViews;
 		std::vector<Pipeline*> m_Pipelines;
+		std::vector<LifecycleObject*> m_LifecycleObjects;
 
 		Renderer(Application* application);
 		~Renderer();
 
 		void create() override;
 		void destroy() override;
+
+		void recreateCommandBuffers();
 
 		// Delete copy
 		inline Renderer(Renderer&) = delete;

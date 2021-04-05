@@ -2,7 +2,7 @@
 
 #include <glacier.hpp>
 
-constexpr float PI = 3.1415926535f;
+constexpr float PI = 3.1415926535;
 
 glacier::ApplicationInfo generateApplicationInfo()
 {
@@ -82,9 +82,9 @@ public:
 		m_Timer += delta;
 
 		TestUniform uniform = {
-			(cos(m_Timer) + 1.0f) / 2.0f,
-			(cos(m_Timer + 2.0f * PI / 3.0f) / 2.0f),
-			(cos(m_Timer + 4.0f * PI / 3.0f) / 2.0f)
+			static_cast<float>((cos(m_Timer) + 1.0) / 2.0),
+			static_cast<float>(cos(m_Timer + 2.0 * PI / 3.0) / 2.0),
+			static_cast<float>(cos(m_Timer + 4.0 * PI / 3.0) / 2.0)
 		};
 		m_UniformBuffer->update(&uniform);
 	}

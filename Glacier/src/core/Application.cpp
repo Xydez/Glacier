@@ -81,7 +81,7 @@ bool isDeviceSuitable(VkPhysicalDevice device, VkSurfaceKHR surface)
 }
 
 glacier::Application::Application(const ApplicationInfo& info)
-	: m_Info(info), m_FramebufferResized(false), m_Renderer(nullptr)
+	: m_Info(info), m_Renderer(nullptr)
 {
 	VkResult result;
 
@@ -329,12 +329,8 @@ void glacier::Application::run()
 
 	bool suboptimal_flag = false;
 
-	glfwSetWindowUserPointer(static_cast<GLFWwindow*>(m_Window->m_Handle), &m_FramebufferResized);
-	glfwSetFramebufferSizeCallback(static_cast<GLFWwindow*>(m_Window->m_Handle), [](GLFWwindow* window, int width, int height) -> void
-		{
-			bool* framebufferResized = reinterpret_cast<bool*>(glfwGetWindowUserPointer(window));
-			*framebufferResized = true;
-		});
+	glfwSetWindowUserPointer(static_cast<GLFWwindow*>(m_Window->m_Handle), this);
+	glfwSetFramebufferSizeCallback(static_cast<GLFWwindow*>(m_Window->m_Handle), framebufferSizeCallback);
 
 	double lastTime = glfwGetTime();
 	while (m_Window->isOpen())
@@ -342,22 +338,33 @@ void glacier::Application::run()
 		double deltaTime = glfwGetTime() - lastTime;
 		lastTime = glfwGetTime();
 
+		/* +================+ */
+		/* |     Update     | */
+		/* +================+ */
 		update(deltaTime);
 
-		/* Draw frame */
+		/* +================+ */
+		/* |     Render     | */
+		/* +================+ */
 		// Wait until the next frame should be drawn
 		vkWaitForFences(static_cast<VkDevice>(m_Device), 1, &(bufferedFences[m_CurrentFrame]), VK_TRUE, UINT64_MAX);
 
 		uint32_t imageIndex;
 		result = vkAcquireNextImageKHR(static_cast<VkDevice>(m_Device), static_cast<VkSwapchainKHR>(m_Renderer->m_Swapchain), UINT64_MAX, imageAvailableSemaphores[m_CurrentFrame], VK_NULL_HANDLE, &imageIndex);
 
-		if (result == VK_ERROR_OUT_OF_DATE_KHR || m_FramebufferResized)
+		if (result == VK_ERROR_OUT_OF_DATE_KHR) // || m_Resized
 		{
-			if (m_FramebufferResized)
-			{
-				glacier::g_Logger->debug("Framebuffer was resized");
-				m_FramebufferResized = false;
-			}
+			//if (m_Resized)
+			//{
+			//	glacier::g_Logger->debug("Framebuffer was resized");
+			//	m_Resized = false;
+			//}
+			//else
+			//{
+			//	glacier::g_Logger->warn("Swapchain out of date");
+			//}
+
+			glacier::g_Logger->warn("Swapchain out of date");
 
 			/* Check if the window was minimized */
 			glm::uvec2 size = m_Window->getFramebufferSize();
@@ -376,13 +383,6 @@ void glacier::Application::run()
 
 			/* Recreate the swapchain */
 			glacier::g_Logger->trace("Swapchain is outdated.");
-
-			//terminateRenderer(m_Renderer);
-			//
-			//delete m_Renderer;
-			//m_Renderer = new Renderer(this);
-			//
-			//initializeRenderer(m_Renderer);
 
 			m_Renderer->destroy();
 			m_Renderer->create();
@@ -498,13 +498,6 @@ void glacier::Application::run()
 			/* Recreate the swapchain */
 			glacier::g_Logger->trace("Swapchain is outdated.");
 
-			//terminateRenderer(m_Renderer);
-			//
-			//delete m_Renderer;
-			//m_Renderer = new Renderer(this);
-			//
-			//initializeRenderer(m_Renderer);
-
 			m_Renderer->destroy();
 			m_Renderer->create();
 
@@ -548,7 +541,6 @@ void glacier::Application::run()
 	/* Destroy renderer */
 	g_Logger->debug("Destroying renderer...");
 
-	// Destroy this shit last
 	for (size_t i = 0; i < bufferedFrameCount; i++)
 	{
 		vkDestroySemaphore(static_cast<VkDevice>(m_Device), imageAvailableSemaphores[i], nullptr);
@@ -563,6 +555,15 @@ void glacier::Application::run()
 void glacier::Application::stop()
 {
 	m_Window->close();
+}
+
+void glacier::Application::framebufferSizeCallback(GLFWwindow* window, int width, int height)
+{
+	/* Window resize, called during resize */
+	glacier::Application* _this = reinterpret_cast<Application*>(glfwGetWindowUserPointer(window));
+
+	_this->m_Renderer->destroy();
+	_this->m_Renderer->create();
 }
 
 #pragma warning(pop)

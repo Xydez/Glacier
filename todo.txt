@@ -1,92 +1,24 @@
 /*
-
-TODO:
-* LifecycleObject <WIP>
-  - Every vulkan object extends LifecycleObject
-  - See code block 1
-  - [BUG] The framebuffer isn't resizing correctly
 * Fix bug where sometimes the framerate doesn't match the refresh rate (In other words, vsync doesn't work)
 * Support rendering multiple vertex buffers
   - Maybe renderer.add(Pipeline* pipeline) for each render call.
+* Support smooth resizing (See quote from CharlesG)
 * Textures (https://vulkan-tutorial.com/Texture_mapping/Images)
 * F11 Fullscreen keybind
 * Make application close gracefully if an exception is thrown
-
-DONE:
-* Uniform buffers (https://vulkan-tutorial.com/Uniform_buffers/Descriptor_layout_and_buffer)
-  - Descriptor pools and sets (https://vulkan-tutorial.com/en/Uniform_buffers/Descriptor_pool_and_sets)
+* Check out this: https://renderdoc.org/ (Graphics debugger)
 */
 
 
-/*=== Code block 1 ===*/
-
-/* SandboxApp.hpp */
-
-public:
-	void initialize(Renderer& renderer)
-	{
-		float data[]
-		{
-			-0.5f, -0.5f, 0.0f,
-			0.5f, -0.5f, 0.0f,
-			0.0f,  0.5f, 0.0f
-		};
-		
-		VertexBufferLayout layout;
-		layout.push<float>(3);
-		
-		m_VertexBuffer = new VertexBuffer(data, 9 * sizeof(float), layout);
-		
-		renderer.add(m_VertexBuffer);
-	}
-	
-	void update(double deltaTime) {}
-	
-	void render(Renderer& renderer)
-	{
-		m_VertexBuffer.bind();
-	}
-	
-	void terminate(Renderer& renderer)
-	{
-		renderer.remove(m_VertexBuffer);
-		
-		delete m_VertexBuffer;
-	}
-private:
-	VertexBuffer* m_VertexBuffer;
-	
-/* Renderer.hpp */
-
-/*
-Object state is managed through the constructor.
-create() and destroy() only recreate the Vulkan object.
-*/
-
-private:
-	Renderer()
-	{
-		create();
-	}
-	
-	~Renderer()
-	{
-		destroy();
-	}
-
-	const std::vector<LifecycleObject> m_Objects;
-	
-	void create()
-	{
-		for (LifecycleObject& obj : m_Objects)
-			obj.create();
-	}
-	
-	void destroy()
-	{
-		for (LifecycleObject& obj : m_Objects)
-			obj.destroy();
-	}
-
-
-/*====================*/
+CharlesG — Yesterday at 17:45
+================================
+The gist of a smooth swapchain resizing is to remove vkDeviceWaitIdle / vkQueueWaitIdle
+How do you do that? Pipeline the crap out of everything and delay destruction of everything until they are no longer in use.
+First (if you haven't already), you will need to enable dynamic viewport/scissor in all your pipelines so you don't have to recreate your pipelines.
+Then you need to make use of command buffer recording, so that you aren't trying to recreate 2-3 command buffers on resize. This makes it so you can easily 'change' which swapchain image you render to when recording your draw calls.
+Also dont recreate the renderpass, that doesn't need recreation at all.
+Now you can create the new swapchain, acquire image, create image views, and create framebuffers. 
+Make sure the old swapchain is in the oldSwapchain parameter when you create the new one. This helps recycle resources.
+Now you need to make it so the old swapchain, image views, and framebuffers don't get destroyed until they are done being rendered from.
+So when you resize, you throw the old resources in a 'delayed destruction queue'. You check this queue every frame to determine if its actually complete, and only then do you destroy everything. 
+This is the gist of it, I might of missed some detail about how to do it.

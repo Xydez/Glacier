@@ -123,8 +123,7 @@ void createSwapchain(const VkPhysicalDevice& physicalDevice, const VkDevice& dev
 	// Enable clipping of unused pixels for better performance
 	swapchainCreateInfo.clipped = VK_TRUE;
 
-	// TODO: If the window is resized, we need to create an entirely new swapchain
-	swapchainCreateInfo.oldSwapchain = VK_NULL_HANDLE;
+	swapchainCreateInfo.oldSwapchain = *oldSwapchain;
 
 	if (vkCreateSwapchainKHR(device, &swapchainCreateInfo, nullptr, pSwapchain) != VK_SUCCESS)
 	{

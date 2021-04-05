@@ -7,6 +7,8 @@
 
 #include "graphics/Window.hpp"
 
+struct GLFWwindow;
+
 namespace glacier
 {
 	class Renderer;
@@ -81,6 +83,8 @@ namespace glacier
 		*/
 		virtual void terminate(Renderer* renderer) {}
 	private:
+		static void framebufferSizeCallback(GLFWwindow* window, int width, int height);
+
 		ApplicationInfo m_Info;
 		Window* m_Window;
 		Renderer* m_Renderer;
@@ -93,7 +97,6 @@ namespace glacier
 
 		void* m_UniformBufferLayout;
 
-		bool m_FramebufferResized;
 		unsigned int m_CurrentFrame = 0;
 
 		friend class VertexBuffer;

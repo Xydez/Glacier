@@ -99,6 +99,11 @@ namespace glacier
 
 		unsigned int m_CurrentFrame = 0;
 
+		std::vector<void*> imageAvailableSemaphores;
+		std::vector<void*> renderFinishedSemaphores;
+		std::vector<void*> bufferedFences;
+		std::vector<void*> bufferedImageFences;
+
 		friend class VertexBuffer;
 		friend class IndexBuffer;
 		friend class UniformBuffer;

@@ -84,6 +84,7 @@ namespace glacier
 		virtual void terminate(Renderer* renderer) {}
 	private:
 		static void framebufferSizeCallback(GLFWwindow* window, int width, int height);
+		void engine_render();
 
 		ApplicationInfo m_Info;
 		Window* m_Window;
@@ -98,6 +99,8 @@ namespace glacier
 		void* m_UniformBufferLayout;
 
 		unsigned int m_CurrentFrame = 0;
+		bool m_SuboptimalFlag = false;
+		double m_LastTime;
 
 		std::vector<void*> imageAvailableSemaphores;
 		std::vector<void*> renderFinishedSemaphores;

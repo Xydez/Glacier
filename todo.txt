@@ -1,4 +1,5 @@
 /*
+* Camera update on resize (= window resize event in Application)
 * Fix bug where sometimes the framerate doesn't match the refresh rate (In other words, vsync doesn't work)
 * Support rendering multiple vertex buffers
   - Maybe renderer.add(Pipeline* pipeline) for each render call.

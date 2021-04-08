@@ -3,11 +3,9 @@
 // TODO: Comment this out
 #extension GL_ARB_separate_shader_objects : enable
 
-layout (binding = 0) uniform TestUniform
+layout (binding = 0) uniform VPMatrix
 {
-	float u_ModifierA;
-	float u_ModifierB;
-	float u_ModifierC;
+	mat4 u_VPMatrix;
 };
 
 layout (location = 0) in vec3 in_Position;
@@ -17,6 +15,6 @@ layout (location = 0) out vec3 out_FragColor;
 
 void main()
 {
-	gl_Position = vec4(in_Position, 1.0);
-	out_FragColor = vec3(in_Color.x * u_ModifierA, in_Color.y * u_ModifierB, in_Color.z * u_ModifierC);
+	gl_Position = vec4(in_Position, 1.0) * u_VPMatrix;
+	out_FragColor = vec3(in_Color.x, in_Color.y, in_Color.z);
 }

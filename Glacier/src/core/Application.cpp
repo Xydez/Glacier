@@ -13,6 +13,8 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
+#include <spdlog/logger.h>
+
 static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT severity, VkDebugUtilsMessageTypeFlagsEXT type, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData)
 {
 	spdlog::level::level_enum level;
@@ -281,9 +283,27 @@ glacier::Application::~Application()
 	g_Logger->info("Application terminated.");
 }
 
+glm::vec2 glacier::Application::getMousePos() const
+{
+	double x, y;
+	glfwGetCursorPos(static_cast<GLFWwindow*>(m_Window->m_Handle), &x, &y);
+
+	return glm::vec2(static_cast<float>(x), static_cast<float>(y));
+}
+
+bool glacier::Application::isKeyPressed(KeyboardKey key) const
+{
+	return glfwGetKey(static_cast<GLFWwindow*>(m_Window->m_Handle), static_cast<int>(key)) == GLFW_PRESS;
+}
+
+void glacier::Application::setCursorMode(CursorMode cursorMode)
+{
+	glfwSetInputMode(static_cast<GLFWwindow*>(m_Window->m_Handle), GLFW_CURSOR, GLFW_CURSOR_NORMAL + static_cast<uint8_t>(cursorMode));
+}
+
 void glacier::Application::engine_render()
 {
-	unsigned int bufferedFrameCount = m_Renderer->m_Images.size();
+	size_t bufferedFrameCount = m_Renderer->m_Images.size();
 
 	VkSemaphoreCreateInfo semaphoreCreateInfo = {};
 	semaphoreCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
@@ -483,7 +503,7 @@ void glacier::Application::run()
 	m_Renderer = new Renderer(this);
 	initialize(m_Renderer);
 
-	unsigned int bufferedFrameCount = m_Renderer->m_Images.size();
+	size_t bufferedFrameCount = m_Renderer->m_Images.size();
 
 	/* Create semaphores */
 	imageAvailableSemaphores.resize(bufferedFrameCount);
@@ -528,7 +548,14 @@ void glacier::Application::run()
 	bool suboptimal_flag = false;
 
 	glfwSetWindowUserPointer(static_cast<GLFWwindow*>(m_Window->m_Handle), this);
+
+	// Add our callbacks
 	glfwSetFramebufferSizeCallback(static_cast<GLFWwindow*>(m_Window->m_Handle), framebufferSizeCallback);
+	glfwSetKeyCallback(static_cast<GLFWwindow*>(m_Window->m_Handle), keyCallback);
+	glfwSetMouseButtonCallback(static_cast<GLFWwindow*>(m_Window->m_Handle), mouseButtonCallback);
+
+	// TODO: Raw mouse motion
+	glfwSetCursorPosCallback(static_cast<GLFWwindow*>(m_Window->m_Handle), cursorPosCallback);
 
 	m_LastTime = glfwGetTime();
 	while (m_Window->isOpen())
@@ -548,6 +575,10 @@ void glacier::Application::run()
 
 		glfwPollEvents();
 	}
+
+	// Remove our callbacks
+	glfwSetFramebufferSizeCallback(static_cast<GLFWwindow*>(m_Window->m_Handle), nullptr);
+	glfwSetKeyCallback(static_cast<GLFWwindow*>(m_Window->m_Handle), nullptr);
 
 	g_Logger->debug("Game loop stopped.");
 
@@ -575,7 +606,6 @@ void glacier::Application::stop()
 
 void glacier::Application::framebufferSizeCallback(GLFWwindow* window, int width, int height)
 {
-	/* Window resize, called during resize */
 	glacier::Application* _this = reinterpret_cast<Application*>(glfwGetWindowUserPointer(window));
 
 	_this->m_Renderer->destroy();
@@ -586,6 +616,57 @@ void glacier::Application::framebufferSizeCallback(GLFWwindow* window, int width
 
 	_this->update(deltaTime);
 	_this->engine_render();
+}
+
+void glacier::Application::keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods)
+{
+	glacier::Application* _this = reinterpret_cast<Application*>(glfwGetWindowUserPointer(window));
+
+	if (key == GLFW_KEY_F11 && action == GLFW_RELEASE)
+	{
+		if (_this->m_Window->m_IsFullscreen)
+		{
+			_this->m_Window->m_IsFullscreen = false;
+
+			GLFWmonitor* monitor = glfwGetWindowMonitor(window);
+			const GLFWvidmode* vidMode = glfwGetVideoMode(monitor);
+
+			glfwSetWindowMonitor(window, nullptr, _this->m_Window->m_LastPosX, _this->m_Window->m_LastPosY, _this->m_Window->m_LastWidth, _this->m_Window->m_LastHeight, vidMode->refreshRate);
+		}
+		else
+		{
+			_this->m_Window->m_IsFullscreen = true;
+
+			GLFWmonitor* monitor = glfwGetWindowMonitor(window);
+			if (monitor == NULL)
+			{
+				monitor = glfwGetPrimaryMonitor();
+			}
+
+			const GLFWvidmode* vidMode = glfwGetVideoMode(monitor);
+
+			glfwGetWindowSize(window, &(_this->m_Window->m_LastWidth), &(_this->m_Window->m_LastHeight));
+			glfwGetWindowPos(window, &(_this->m_Window->m_LastPosX), &(_this->m_Window->m_LastPosY));
+
+			glfwSetWindowMonitor(window, monitor, 0, 0, vidMode->width, vidMode->height, vidMode->refreshRate);
+		}
+	}
+
+	_this->onKeyboardEvent(static_cast<KeyboardKey>(key), static_cast<KeyboardAction>(action), mods);
+}
+
+void glacier::Application::mouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
+{
+	glacier::Application* _this = reinterpret_cast<Application*>(glfwGetWindowUserPointer(window));
+
+	_this->onMouseButtonEvent(static_cast<MouseButton>(button), static_cast<MouseAction>(action), mods);
+}
+
+void glacier::Application::cursorPosCallback(GLFWwindow* window, double x, double y)
+{
+	glacier::Application* _this = reinterpret_cast<Application*>(glfwGetWindowUserPointer(window));
+
+	_this->onMouseMoveEvent(glm::vec2(static_cast<float>(x), static_cast<float>(y)));
 }
 
 #pragma warning(pop)

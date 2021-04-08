@@ -28,7 +28,7 @@ glacier::UniformBuffer::~UniformBuffer()
 
 void glacier::UniformBuffer::create()
 {
-    unsigned int imageCount = m_Application->m_Renderer->m_Images.size();
+    size_t imageCount = m_Application->m_Renderer->m_Images.size();
 
     m_HandleVector.resize(imageCount);
     m_MemoryVector.resize(imageCount);
@@ -44,7 +44,7 @@ void glacier::UniformBuffer::create()
     VkDescriptorSetAllocateInfo descriptorSetAllocateInfo = {};
     descriptorSetAllocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
     descriptorSetAllocateInfo.descriptorPool = static_cast<VkDescriptorPool>(m_Application->m_Renderer->m_DescriptorPool);
-    descriptorSetAllocateInfo.descriptorSetCount = imageCount;
+    descriptorSetAllocateInfo.descriptorSetCount = static_cast<uint32_t>(imageCount);
     descriptorSetAllocateInfo.pSetLayouts = layouts.data();
 
     m_DescriptorSets.resize(imageCount);

@@ -352,13 +352,13 @@ glacier::Renderer::Renderer(Application* application)
 	/* Create descriptor pool */
 	VkDescriptorPoolSize descriptorPoolSize = {};
 	descriptorPoolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	descriptorPoolSize.descriptorCount = m_Images.size();
+	descriptorPoolSize.descriptorCount = static_cast<uint32_t>(m_Images.size());
 
 	VkDescriptorPoolCreateInfo descriptorPoolCreateInfo = {};
 	descriptorPoolCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
 	descriptorPoolCreateInfo.poolSizeCount = 1;
 	descriptorPoolCreateInfo.pPoolSizes = &descriptorPoolSize;
-	descriptorPoolCreateInfo.maxSets = m_Images.size();
+	descriptorPoolCreateInfo.maxSets = static_cast<uint32_t>(m_Images.size());
 
 	VkResult result = vkCreateDescriptorPool(static_cast<VkDevice>(m_Application->m_Device), &descriptorPoolCreateInfo, nullptr, reinterpret_cast<VkDescriptorPool*>(&m_DescriptorPool));
 	if (result != VK_SUCCESS)
@@ -513,9 +513,9 @@ void glacier::Renderer::recreateCommandBuffers()
 			size_t count = pipeline->m_IndexBuffer->getCount();
 
 			if (pipeline->m_IndexBuffer)
-				vkCmdDrawIndexed(static_cast<VkCommandBuffer>(m_CommandBuffers[i]), count, 1, 0, 0, 0);
+				vkCmdDrawIndexed(static_cast<VkCommandBuffer>(m_CommandBuffers[i]), static_cast<uint32_t>(count), 1, 0, 0, 0);
 			else
-				vkCmdDraw(static_cast<VkCommandBuffer>(m_CommandBuffers[i]), count, 1, 0, 0);
+				vkCmdDraw(static_cast<VkCommandBuffer>(m_CommandBuffers[i]), static_cast<uint32_t>(count), 1, 0, 0);
 		}
 
 		vkCmdEndRenderPass(static_cast<VkCommandBuffer>(m_CommandBuffers[i]));

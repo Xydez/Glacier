@@ -14,6 +14,8 @@ set(Headers
 	include/graphics/UniformBuffer.hpp
 	include/graphics/VertexBuffer.hpp
 	include/graphics/Window.hpp
+	include/graphics/Camera.hpp
+	include/math/math.hpp
 	include/internal/utility.hpp
 )
 
@@ -28,6 +30,7 @@ set(Sources
 	src/graphics/UniformBuffer.cpp
 	src/graphics/VertexBuffer.cpp
 	src/graphics/Window.cpp
+	src/graphics/Camera.cpp
 	src/internal/utility.cpp
 )
 

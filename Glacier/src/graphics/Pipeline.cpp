@@ -9,6 +9,12 @@
 glacier::Pipeline::Pipeline(const glacier::Application* application, const std::unordered_map<ShaderType, Shader*>& shaders, const std::optional<UniformBuffer*>& uniformBuffer, const VertexBuffer* vertexBuffer, const IndexBuffer* indexBuffer)
 	: m_Application(application), m_VertexBuffer(vertexBuffer), m_IndexBuffer(indexBuffer), m_Shaders(shaders), m_UniformBuffer(uniformBuffer)
 {
+	ASSERT(application != nullptr);
+	ASSERT(shaders.find(ShaderType::Vertex) != shaders.end());
+	ASSERT(shaders.find(ShaderType::Fragment) != shaders.end());
+	ASSERT(vertexBuffer != nullptr);
+	ASSERT(indexBuffer != nullptr);
+	
 	//m_Application->m_Renderer->m_Pipelines.push_back(this);
 
 	// TODO: Called in Renderer#addPipeline()

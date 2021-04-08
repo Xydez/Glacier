@@ -1,6 +1,7 @@
 #pragma once
 
-#include <spdlog/fwd.h>
+//#include <spdlog/fwd.h>
+#include <spdlog/logger.h>
 #include <memory>
 
 #ifdef GLACIER_BUILD_DLL
@@ -12,6 +13,12 @@
 #else
 #define GLACIER_API
 #endif // GLACIER_BUILD_DLL
+
+#ifdef NDEBUG
+#define ASSERT(x)
+#else
+#define ASSERT(x) if (!(x)) { g_Logger->error("Assertion failed ({}:{})", __FILE__, __LINE__); }
+#endif
 
 namespace glacier
 {

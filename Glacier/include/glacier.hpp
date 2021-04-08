@@ -11,3 +11,5 @@
 #include "graphics/UniformBuffer.hpp"
 #include "graphics/VertexBuffer.hpp"
 #include "graphics/Window.hpp"
+#include "graphics/Camera.hpp"
+#include "math/math.hpp"

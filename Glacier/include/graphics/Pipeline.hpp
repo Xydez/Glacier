@@ -52,8 +52,8 @@ namespace glacier
 		Pipeline(Pipeline&&) = delete;
 		Pipeline& operator=(Pipeline&&) = delete;
 	private:
-		void* m_PipelineLayout;
-		void* m_Pipeline;
+		void* m_PipelineLayout = nullptr;
+		void* m_Pipeline = nullptr;
 
 		const Application* m_Application;
 		const VertexBuffer* m_VertexBuffer;
